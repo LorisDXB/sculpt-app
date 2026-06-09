@@ -72,7 +72,7 @@ class NutritionApiClient {
 
   private fun buildAnalysisRequestBody(imageFile: File): JSONObject {
     val encodedImage =
-        Base64.encodeToString(imageFile.readBytes(), Base64.NO_WRAP or Base64.NO_PADDING)
+        Base64.encodeToString(imageFile.readBytes(), Base64.NO_WRAP)
     val prompt =
         """
         You are estimating nutrition from a meal photo for personal calorie tracking.
@@ -81,6 +81,9 @@ class NutritionApiClient {
         Estimate the full serving, not only the visible top surface.
         Account for cooking oil, sauces, dressings, cheese, butter, and other hidden calories when visually plausible.
         When portion size is uncertain, avoid optimistic low estimates.
+        For bowls, pasta dishes, rice dishes, mixed salads, and layered meals, assume the container or plate usually holds more food mass than the top view suggests.
+        For pasta salad and similar cold mixed dishes, count dressing, oil, cheese, meat, and dense starch portions fully unless the portion is clearly very small.
+        If the meal could plausibly fall in a lower or higher calorie range, choose a realistic midpoint-to-upper estimate rather than a low estimate.
         If the image is not food, return meal_name "not food" and all numeric values as 0.
         """.trimIndent()
 
