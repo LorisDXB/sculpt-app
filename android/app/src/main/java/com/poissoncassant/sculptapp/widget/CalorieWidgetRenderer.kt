@@ -5,9 +5,17 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.LinearGradient
+import android.graphics.Paint
+import android.graphics.RectF
+import android.graphics.Shader
 import android.widget.RemoteViews
 import com.poissoncassant.sculptapp.MainActivity
 import com.poissoncassant.sculptapp.R
+import kotlin.math.max
 
 object CalorieWidgetRenderer {
   fun render(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
@@ -23,6 +31,10 @@ object CalorieWidgetRenderer {
               REQUEST_NO_OP,
               CalorieWidgetProvider.ACTION_NO_OP,
           ),
+      )
+      views.setImageViewBitmap(
+          R.id.widget_background_image,
+          createBackgroundBitmap(state),
       )
       views.setTextViewText(
           R.id.widget_remaining_value,
@@ -151,6 +163,58 @@ object CalorieWidgetRenderer {
         intent,
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
+  }
+
+  private fun createBackgroundBitmap(state: CalorieWidgetState): Bitmap {
+    val width = 900
+    val height = 420
+    val cornerRadius = 48f
+    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+      color = Color.argb(56, 255, 255, 255)
+      style = Paint.Style.STROKE
+      strokeWidth = 3f
+    }
+
+    val progress =
+        if (state.dailyCalorieTarget <= 0) {
+          1f
+        } else {
+          (state.caloriesConsumedToday.toFloat() / max(state.dailyCalorieTarget, 1).toFloat())
+              .coerceIn(0f, 1f)
+        }
+    val accentHue = 135f - (135f * progress)
+    val accentColor = Color.HSVToColor(floatArrayOf(accentHue, 0.72f, 0.88f))
+    val midColor = blendColors(Color.parseColor("#0A1324"), accentColor, 0.48f)
+    val baseColor = Color.parseColor("#08111F")
+
+    paint.shader =
+        LinearGradient(
+            0f,
+            0f,
+            width.toFloat(),
+            height.toFloat(),
+            intArrayOf(baseColor, midColor, accentColor),
+            floatArrayOf(0f, 0.62f, 1f),
+            Shader.TileMode.CLAMP,
+        )
+
+    val rect = RectF(0f, 0f, width.toFloat(), height.toFloat())
+    canvas.drawRoundRect(rect, cornerRadius, cornerRadius, paint)
+    canvas.drawRoundRect(rect, cornerRadius, cornerRadius, strokePaint)
+    return bitmap
+  }
+
+  private fun blendColors(from: Int, to: Int, ratio: Float): Int {
+    val clamped = ratio.coerceIn(0f, 1f)
+    val inverse = 1f - clamped
+    val alpha = (Color.alpha(from) * inverse + Color.alpha(to) * clamped).toInt()
+    val red = (Color.red(from) * inverse + Color.red(to) * clamped).toInt()
+    val green = (Color.green(from) * inverse + Color.green(to) * clamped).toInt()
+    val blue = (Color.blue(from) * inverse + Color.blue(to) * clamped).toInt()
+    return Color.argb(alpha, red, green, blue)
   }
 
   private const val REQUEST_OPEN_APP = 1001
