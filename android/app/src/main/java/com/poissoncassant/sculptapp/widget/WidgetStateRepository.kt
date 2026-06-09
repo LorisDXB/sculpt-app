@@ -62,6 +62,11 @@ class WidgetStateRepository(context: Context) {
     persistState(current.copy(adjustmentStep = nextStep))
   }
 
+  fun setDailyCalorieTarget(target: Int) {
+    val current = readState()
+    persistState(current.copy(dailyCalorieTarget = target.coerceAtLeast(0)))
+  }
+
   fun adjustCaloriesRemaining(increase: Boolean) {
     val current = readState()
     val delta = if (increase) current.adjustmentStep else -current.adjustmentStep
@@ -87,6 +92,34 @@ class WidgetStateRepository(context: Context) {
 
   fun resetToday() {
     persistState(defaultState(LocalDate.now(ZoneId.systemDefault()).toString()))
+  }
+
+  fun logAnalyzedMeal(
+      mealName: String,
+      calories: Int,
+      proteinGrams: Int,
+      carbsGrams: Int,
+      fatGrams: Int,
+      timestamp: String,
+  ) {
+    val current = readState()
+    val sanitizedCalories = calories.coerceAtLeast(0)
+    val nextMeal =
+        LastMealState(
+            timestamp = timestamp,
+            mealName = mealName.ifBlank { "Meal" },
+            calories = sanitizedCalories,
+            proteinGrams = proteinGrams.coerceAtLeast(0),
+            carbsGrams = carbsGrams.coerceAtLeast(0),
+            fatGrams = fatGrams.coerceAtLeast(0),
+        )
+
+    persistState(
+        current.copy(
+            caloriesConsumedToday = (current.caloriesConsumedToday + sanitizedCalories).coerceAtLeast(0),
+            lastMeal = nextMeal,
+        ),
+    )
   }
 
   fun saveCapturedImage(rawImagePath: String?, compressedImagePath: String, capturedAt: String) {

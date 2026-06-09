@@ -88,7 +88,7 @@ React Native owns:
 - onboarding/setup screen;
 - settings screen;
 - user-editable configuration;
-- optional API key entry;
+- required API key entry and validation UI;
 - lightweight help/instructions.
 
 Native Kotlin owns:
@@ -253,6 +253,10 @@ Choose a provider based on:
 
 ### Required Safeguards
 
+- meal capture must be blocked until a valid API key is stored;
+- API key presence must be checked in native code before launching capture;
+- missing-key users must be routed into a minimal setup/settings flow;
+- API key validation is mandatory before AI logging is enabled;
 - strict schema parsing;
 - malformed-response handling;
 - macro-to-calorie consistency normalization;
@@ -261,11 +265,15 @@ Choose a provider based on:
 
 ### Success Criteria
 
+- a first-time user can understand why `Add meal` is blocked and resolve it quickly;
+- an invalid API key is rejected before any capture/upload flow is allowed;
 - A valid meal photo usually results in a parsable estimate.
 - A bad model response does not corrupt local state.
 
 ### Risks
 
+- API key setup friction making the first-use flow feel heavier than the widget UX;
+- splitting API key checks between native and RN in inconsistent ways;
 - model inconsistency;
 - drifting provider behavior;
 - hidden cost surprises if the prompt or image size is poorly controlled.
@@ -273,6 +281,8 @@ Choose a provider based on:
 ### Execution Notes
 
 - Keep the provider swappable behind a small client interface.
+- Treat API key gating as part of the AI boundary, not as a later polish item.
+- Keep the missing-key screen extremely narrow so it feels like an unlock step, not a full app detour.
 - Persist confidence only as support metadata, not as a primary UX element.
 
 ## Axis 7 - App Shell, Setup, and Settings
@@ -285,6 +295,7 @@ Provide just enough normal UI to make the widget installable and configurable.
 
 - first-launch setup;
 - settings screen;
+- direct API key unlock screen reachable from the widget flow;
 - widget setup guidance;
 - permission prompts;
 - reset and clear-data actions.
@@ -292,6 +303,7 @@ Provide just enough normal UI to make the widget installable and configurable.
 ### Success Criteria
 
 - A first-time user can configure target calories and get to a working widget without confusion.
+- A first-time user can paste and validate an API key in under a minute.
 - The app shell remains intentionally small.
 
 ### Risks
@@ -473,6 +485,10 @@ Use this checklist as the working implementation tracker.
 ### AI
 
 - Pick provider.
+- Add API key storage outside ordinary widget state.
+- Add native check for validated API key before starting `Add meal`.
+- Route missing-key users to the API key unlock screen.
+- Implement mandatory API key validation flow.
 - Build image upload request.
 - Implement strict response parsing.
 - Implement normalization for macro/calorie mismatch.

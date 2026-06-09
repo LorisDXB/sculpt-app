@@ -26,6 +26,12 @@
       </activity>
 
       <activity
+        android:name=".AddMealEntryActivity"
+        android:excludeFromRecents="true"
+        android:exported="false"
+        android:theme="@style/AppTheme" />
+
+      <activity
         android:name=".camera.MealCaptureActivity"
         android:excludeFromRecents="true"
         android:exported="false"

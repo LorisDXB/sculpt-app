@@ -168,7 +168,7 @@ Actions:
 
 - add widget instruction;
 - grant camera permission;
-- test API key if needed.
+- validate API key before enabling meal capture.
 
 ### Settings screen
 
@@ -176,6 +176,7 @@ Minimal:
 
 - daily calorie target;
 - API key;
+- API key validation status;
 - reset today;
 - clear all local data;
 - widget setup help.
@@ -198,14 +199,16 @@ Use an Android launcher shortcut / widget tap action that opens a camera capture
 Flow:
 
 1. User taps capture area on widget or uses app shortcut.
-2. Native Android camera capture opens.
-3. User takes photo.
-4. App receives image URI.
-5. Image is compressed locally.
-6. Image is sent to AI API.
-7. Result is parsed.
-8. Local data updates.
-9. Widget refreshes.
+2. Native code checks whether a validated API key exists.
+3. If no validated key exists, open a minimal API key setup screen instead of camera.
+4. If a validated key exists, native Android camera capture opens.
+5. User takes photo.
+6. App receives image URI.
+7. Image is compressed locally.
+8. Image is sent to AI API.
+9. Result is parsed.
+10. Local data updates.
+11. Widget refreshes.
 
 Avoid background instant photo capture for MVP. It is more complex, permission-sensitive, and less reliable.
 
@@ -217,6 +220,17 @@ Implement in this order:
 2. Android launcher shortcut: "Log meal".
 3. Optional later: Quick Settings tile.
 4. Optional later: device gesture integration if user configures it manually.
+
+### API key gate before capture
+
+The app should not allow `Add meal` to continue unless a valid AI API key has already been saved and validated.
+
+Required behavior:
+
+- check API key readiness in native Android before launching camera;
+- if missing or invalid, route directly to a tiny API key setup screen;
+- require a successful validation call before meal capture is enabled;
+- do not allow the first real meal photo to be the moment validation happens.
 
 ## 6. AI API Strategy
 
@@ -231,6 +245,10 @@ Requirements:
 - supports JSON output;
 - cheap enough for personal use;
 - reliable enough for rough tracking.
+
+Operational requirement:
+
+- the provider must support a fast validation request so the app can confirm the user's API key before allowing capture.
 
 The app should not depend on a nutrition database.
 
@@ -256,6 +274,18 @@ The app should require strict JSON:
 ```
 
 The app should ignore uncertainty for UX purposes, but storing confidence locally is still useful for debugging.
+
+### API key handling
+
+The app requires a user-provided API key.
+
+Rules:
+
+- store the key outside ordinary widget meal state;
+- keep a persisted validation status;
+- revalidate when the key changes;
+- block `Add meal` until validation succeeds;
+- surface a clear invalid-key error in setup instead of failing later in the capture flow.
 
 ### AI prompt
 
@@ -478,6 +508,7 @@ Suggested structure:
     /screens
       SetupScreen.tsx
       SettingsScreen.tsx
+      ApiKeySetupScreen.tsx
     /storage
       settingsStorage.ts
       widgetBridge.ts
@@ -587,6 +618,10 @@ Acceptance:
 Tasks:
 
 - choose API provider;
+- add API key storage and validation status;
+- block `Add meal` when no validated API key exists;
+- route missing-key users to the API key setup screen;
+- implement mandatory API key validation;
 - implement image upload;
 - send strict prompt;
 - parse JSON response;
@@ -596,6 +631,8 @@ Tasks:
 
 Acceptance:
 
+- user cannot start meal capture without a validated API key;
+- invalid keys are rejected before capture starts;
 - photo results in estimated calories/macros;
 - widget updates after analysis;
 - malformed AI response is handled safely.
@@ -607,7 +644,7 @@ Tasks:
 - first launch setup;
 - daily calorie target setting;
 - goal mode setting;
-- API key setting if needed;
+- API key setting and required validation flow;
 - reset today;
 - clear data;
 - widget setup instructions.

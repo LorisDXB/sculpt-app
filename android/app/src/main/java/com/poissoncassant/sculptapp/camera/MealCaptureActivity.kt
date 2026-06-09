@@ -1,10 +1,9 @@
 package com.poissoncassant.sculptapp.camera
 
 import android.app.Activity
-import android.content.ClipData
 import android.content.ActivityNotFoundException
+import android.content.ClipData
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
@@ -12,6 +11,8 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.core.content.FileProvider
+import com.poissoncassant.sculptapp.ai.NutritionApiClient
+import com.poissoncassant.sculptapp.config.AppConfigRepository
 import com.poissoncassant.sculptapp.widget.CalorieWidgetRenderer
 import com.poissoncassant.sculptapp.widget.WidgetStateRepository
 import java.io.File
@@ -119,12 +120,32 @@ class MealCaptureActivity : ComponentActivity() {
 
     Thread {
       runCatching {
+            val apiKey = AppConfigRepository(this).getApiKey()
+            if (apiKey.isNullOrBlank()) {
+              throw IOException("No validated API key available")
+            }
+
             Log.d(TAG, "Compressing captured image from $sourceUri")
             val compressedFile = ImageCompressor.compressToJpeg(this, sourceUri)
+            Log.d(TAG, "Analyzing compressed image at ${compressedFile.absolutePath}")
+            val estimate = NutritionApiClient().analyzeMealImage(apiKey, compressedFile)
+
+            if (estimate.mealName.equals("not food", ignoreCase = true) || estimate.calories <= 0) {
+              throw NotFoodException()
+            }
+
             WidgetStateRepository(this).saveCapturedImage(
                 rawImagePath = pendingPhotoPath,
                 compressedImagePath = compressedFile.absolutePath,
                 capturedAt = Instant.now().toString(),
+            )
+            WidgetStateRepository(this).logAnalyzedMeal(
+                mealName = estimate.mealName,
+                calories = estimate.calories,
+                proteinGrams = estimate.proteinGrams,
+                carbsGrams = estimate.carbsGrams,
+                fatGrams = estimate.fatGrams,
+                timestamp = Instant.now().toString(),
             )
             CalorieWidgetRenderer.refreshAll(this)
             Log.d(TAG, "Compressed image saved to ${compressedFile.absolutePath}")
@@ -133,7 +154,7 @@ class MealCaptureActivity : ComponentActivity() {
           .onSuccess {
             runOnUiThread {
               revokePendingUriPermission()
-              Toast.makeText(this, "Meal photo captured.", Toast.LENGTH_SHORT).show()
+              Toast.makeText(this, "Meal analyzed and added.", Toast.LENGTH_SHORT).show()
               finish()
             }
           }
@@ -142,8 +163,13 @@ class MealCaptureActivity : ComponentActivity() {
             revokePendingUriPermission()
             cleanupPendingRawFile()
             runOnUiThread {
-              Toast.makeText(this, "Could not process captured photo.", Toast.LENGTH_SHORT)
-                  .show()
+              val message =
+                  if (it is NotFoodException) {
+                    "No food detected in that image."
+                  } else {
+                    "Could not analyze captured photo."
+                  }
+              Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
               finish()
             }
           }
@@ -186,4 +212,6 @@ class MealCaptureActivity : ComponentActivity() {
     private const val STATE_PENDING_PHOTO_PATH = "pending_photo_path"
     private const val STATE_PENDING_PHOTO_URI = "pending_photo_uri"
   }
+
+  private class NotFoodException : IOException("Model did not detect a meal")
 }

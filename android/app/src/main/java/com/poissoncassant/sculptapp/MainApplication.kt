@@ -6,6 +6,7 @@ import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
 import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
 import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
+import com.poissoncassant.sculptapp.bridge.SculptNativePackage
 
 class MainApplication : Application(), ReactApplication {
   override val reactHost: ReactHost by lazy {
@@ -13,7 +14,7 @@ class MainApplication : Application(), ReactApplication {
         context = applicationContext,
         packageList =
             PackageList(this).packages.apply {
-              // Native packages can be added here once the RN bridge surface grows.
+              add(SculptNativePackage())
             },
     )
   }
