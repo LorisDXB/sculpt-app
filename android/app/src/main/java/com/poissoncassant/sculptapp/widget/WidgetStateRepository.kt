@@ -55,8 +55,61 @@ class WidgetStateRepository(context: Context) {
     preferences.edit().putInt(KEY_SAMPLE_INDEX, (sampleIndex + 1) % SAMPLE_MEALS.size).apply()
   }
 
+  fun cycleAdjustmentStep() {
+    val current = readState()
+    val currentIndex = ADJUSTMENT_STEPS.indexOf(current.adjustmentStep).takeIf { it >= 0 } ?: 0
+    val nextStep = ADJUSTMENT_STEPS[(currentIndex + 1) % ADJUSTMENT_STEPS.size]
+    persistState(current.copy(adjustmentStep = nextStep))
+  }
+
+  fun adjustCaloriesRemaining(increase: Boolean) {
+    val current = readState()
+    val delta = if (increase) current.adjustmentStep else -current.adjustmentStep
+    val nextTarget = (current.dailyCalorieTarget + delta).coerceAtLeast(0)
+    persistState(current.copy(dailyCalorieTarget = nextTarget))
+  }
+
+  fun adjustLastMealCalories(increase: Boolean) {
+    val current = readState()
+    val lastMeal = current.lastMeal ?: return
+    val delta = if (increase) current.adjustmentStep else -current.adjustmentStep
+    val nextMealCalories = (lastMeal.calories + delta).coerceAtLeast(0)
+    val appliedDelta = nextMealCalories - lastMeal.calories
+    val nextConsumed = (current.caloriesConsumedToday + appliedDelta).coerceAtLeast(0)
+
+    persistState(
+        current.copy(
+            caloriesConsumedToday = nextConsumed,
+            lastMeal = scaleMeal(lastMeal, nextMealCalories),
+        ),
+    )
+  }
+
   fun resetToday() {
     persistState(defaultState(LocalDate.now(ZoneId.systemDefault()).toString()))
+  }
+
+  private fun scaleMeal(lastMeal: LastMealState, nextCalories: Int): LastMealState {
+    if (nextCalories == 0) {
+      return lastMeal.copy(calories = 0, proteinGrams = 0, carbsGrams = 0, fatGrams = 0)
+    }
+
+    if (lastMeal.calories <= 0) {
+      return lastMeal.copy(
+          calories = nextCalories,
+          proteinGrams = ((nextCalories * 0.30) / 4.0).toInt(),
+          carbsGrams = ((nextCalories * 0.40) / 4.0).toInt(),
+          fatGrams = ((nextCalories * 0.30) / 9.0).toInt(),
+      )
+    }
+
+    val ratio = nextCalories.toDouble() / lastMeal.calories.toDouble()
+    return lastMeal.copy(
+        calories = nextCalories,
+        proteinGrams = (lastMeal.proteinGrams * ratio).toInt(),
+        carbsGrams = (lastMeal.carbsGrams * ratio).toInt(),
+        fatGrams = (lastMeal.fatGrams * ratio).toInt(),
+    )
   }
 
   private fun readPersistedState(date: String): CalorieWidgetState =
@@ -135,6 +188,7 @@ class WidgetStateRepository(context: Context) {
 
     private const val DEFAULT_DAILY_TARGET = 2500
     private const val DEFAULT_ADJUSTMENT_STEP = 50
+    private val ADJUSTMENT_STEPS = listOf(10, 50, 100, 250)
 
     private val SAMPLE_MEALS =
         listOf(

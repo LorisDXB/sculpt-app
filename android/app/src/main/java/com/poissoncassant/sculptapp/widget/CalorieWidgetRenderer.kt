@@ -16,6 +16,14 @@ object CalorieWidgetRenderer {
 
     appWidgetIds.forEach { appWidgetId ->
       val views = RemoteViews(context.packageName, R.layout.calorie_widget)
+      views.setOnClickPendingIntent(
+          R.id.widget_root_container,
+          buildBroadcastPendingIntent(
+              context,
+              REQUEST_NO_OP,
+              CalorieWidgetProvider.ACTION_NO_OP,
+          ),
+      )
       views.setTextViewText(
           R.id.widget_remaining_value,
           context.getString(R.string.widget_remaining_format, state.caloriesRemaining),
@@ -29,8 +37,8 @@ object CalorieWidgetRenderer {
           ),
       )
       views.setTextViewText(
-          R.id.widget_step_value,
-          context.getString(R.string.widget_step_format, state.adjustmentStep),
+          R.id.widget_step_button,
+          context.getString(R.string.widget_step_button_format, state.adjustmentStep),
       )
 
       if (lastMeal == null) {
@@ -58,6 +66,46 @@ object CalorieWidgetRenderer {
       }
 
       views.setOnClickPendingIntent(R.id.widget_open_app_button, buildOpenAppPendingIntent(context))
+      views.setOnClickPendingIntent(
+          R.id.widget_remaining_increase_zone,
+          buildBroadcastPendingIntent(
+              context,
+              REQUEST_INCREASE_REMAINING,
+              CalorieWidgetProvider.ACTION_INCREASE_REMAINING,
+          ),
+      )
+      views.setOnClickPendingIntent(
+          R.id.widget_remaining_decrease_zone,
+          buildBroadcastPendingIntent(
+              context,
+              REQUEST_DECREASE_REMAINING,
+              CalorieWidgetProvider.ACTION_DECREASE_REMAINING,
+          ),
+      )
+      views.setOnClickPendingIntent(
+          R.id.widget_last_meal_increase_zone,
+          buildBroadcastPendingIntent(
+              context,
+              REQUEST_INCREASE_LAST_MEAL,
+              CalorieWidgetProvider.ACTION_INCREASE_LAST_MEAL,
+          ),
+      )
+      views.setOnClickPendingIntent(
+          R.id.widget_last_meal_decrease_zone,
+          buildBroadcastPendingIntent(
+              context,
+              REQUEST_DECREASE_LAST_MEAL,
+              CalorieWidgetProvider.ACTION_DECREASE_LAST_MEAL,
+          ),
+      )
+      views.setOnClickPendingIntent(
+          R.id.widget_step_button,
+          buildBroadcastPendingIntent(
+              context,
+              REQUEST_CYCLE_STEP,
+              CalorieWidgetProvider.ACTION_CYCLE_STEP,
+          ),
+      )
       views.setOnClickPendingIntent(R.id.widget_sample_button, buildSampleMealPendingIntent(context))
       appWidgetManager.updateAppWidget(appWidgetId, views)
     }
@@ -84,13 +132,22 @@ object CalorieWidgetRenderer {
   }
 
   private fun buildSampleMealPendingIntent(context: Context): PendingIntent {
-    val intent =
-        Intent(context, CalorieWidgetProvider::class.java).apply {
-          action = CalorieWidgetProvider.ACTION_LOG_SAMPLE_MEAL
-        }
-    return PendingIntent.getBroadcast(
+    return buildBroadcastPendingIntent(
         context,
         REQUEST_SAMPLE_MEAL,
+        CalorieWidgetProvider.ACTION_LOG_SAMPLE_MEAL,
+    )
+  }
+
+  private fun buildBroadcastPendingIntent(
+      context: Context,
+      requestCode: Int,
+      action: String,
+  ): PendingIntent {
+    val intent = Intent(context, CalorieWidgetProvider::class.java).apply { this.action = action }
+    return PendingIntent.getBroadcast(
+        context,
+        requestCode,
         intent,
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
@@ -98,4 +155,10 @@ object CalorieWidgetRenderer {
 
   private const val REQUEST_OPEN_APP = 1001
   private const val REQUEST_SAMPLE_MEAL = 1002
+  private const val REQUEST_CYCLE_STEP = 1003
+  private const val REQUEST_INCREASE_REMAINING = 1004
+  private const val REQUEST_DECREASE_REMAINING = 1005
+  private const val REQUEST_INCREASE_LAST_MEAL = 1006
+  private const val REQUEST_DECREASE_LAST_MEAL = 1007
+  private const val REQUEST_NO_OP = 1008
 }

@@ -10,7 +10,9 @@
     <string name="widget_macro_format">P %1$dg  C %2$dg  F %3$dg</string>
     <string name="widget_macro_empty">No macros yet</string>
     <string name="widget_no_meal">No meal today</string>
-    <string name="widget_step_format">Step %1$d</string>
-    <string name="widget_open_app">Open app</string>
+    <string name="widget_step_button_format">Step %1$d</string>
+    <string name="widget_add_meal">Add meal</string>
     <string name="widget_sample_meal">Sample meal</string>
+    <string name="widget_hint_plus">+</string>
+    <string name="widget_hint_minus">-</string>
 </resources>

@@ -24,6 +24,27 @@ class CalorieWidgetProvider : AppWidgetProvider() {
       Intent.ACTION_BOOT_COMPLETED -> {
         CalorieWidgetRenderer.refreshAll(context)
       }
+      ACTION_NO_OP -> Unit
+      ACTION_CYCLE_STEP -> {
+        WidgetStateRepository(context).cycleAdjustmentStep()
+        CalorieWidgetRenderer.refreshAll(context)
+      }
+      ACTION_INCREASE_REMAINING -> {
+        WidgetStateRepository(context).adjustCaloriesRemaining(increase = true)
+        CalorieWidgetRenderer.refreshAll(context)
+      }
+      ACTION_DECREASE_REMAINING -> {
+        WidgetStateRepository(context).adjustCaloriesRemaining(increase = false)
+        CalorieWidgetRenderer.refreshAll(context)
+      }
+      ACTION_INCREASE_LAST_MEAL -> {
+        WidgetStateRepository(context).adjustLastMealCalories(increase = true)
+        CalorieWidgetRenderer.refreshAll(context)
+      }
+      ACTION_DECREASE_LAST_MEAL -> {
+        WidgetStateRepository(context).adjustLastMealCalories(increase = false)
+        CalorieWidgetRenderer.refreshAll(context)
+      }
       ACTION_LOG_SAMPLE_MEAL -> {
         WidgetStateRepository(context).logSampleMeal()
         CalorieWidgetRenderer.refreshAll(context)
@@ -36,6 +57,18 @@ class CalorieWidgetProvider : AppWidgetProvider() {
   }
 
   companion object {
+    const val ACTION_NO_OP =
+        "com.poissoncassant.sculptapp.widget.ACTION_NO_OP"
+    const val ACTION_CYCLE_STEP =
+        "com.poissoncassant.sculptapp.widget.ACTION_CYCLE_STEP"
+    const val ACTION_INCREASE_REMAINING =
+        "com.poissoncassant.sculptapp.widget.ACTION_INCREASE_REMAINING"
+    const val ACTION_DECREASE_REMAINING =
+        "com.poissoncassant.sculptapp.widget.ACTION_DECREASE_REMAINING"
+    const val ACTION_INCREASE_LAST_MEAL =
+        "com.poissoncassant.sculptapp.widget.ACTION_INCREASE_LAST_MEAL"
+    const val ACTION_DECREASE_LAST_MEAL =
+        "com.poissoncassant.sculptapp.widget.ACTION_DECREASE_LAST_MEAL"
     const val ACTION_LOG_SAMPLE_MEAL =
         "com.poissoncassant.sculptapp.widget.ACTION_LOG_SAMPLE_MEAL"
     const val ACTION_RESET_TODAY =
