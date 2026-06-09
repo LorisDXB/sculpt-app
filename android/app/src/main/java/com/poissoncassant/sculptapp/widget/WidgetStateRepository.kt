@@ -134,6 +134,16 @@ class WidgetStateRepository(context: Context) {
     )
   }
 
+  fun clearAnalysisFeedback() {
+    val current = readState()
+    persistState(
+        current.copy(
+            analysisStatus = AnalysisStatus.IDLE,
+            analysisMessage = null,
+        ),
+    )
+  }
+
   fun logAnalyzedMeal(
       mealName: String,
       calories: Int,

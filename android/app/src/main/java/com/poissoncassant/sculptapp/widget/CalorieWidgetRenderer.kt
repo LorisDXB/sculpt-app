@@ -60,11 +60,15 @@ object CalorieWidgetRenderer {
       )
 
       if (state.analysisStatus == AnalysisStatus.ANALYZING) {
+        views.setViewVisibility(R.id.widget_last_meal_label, android.view.View.VISIBLE)
         views.setTextViewText(R.id.widget_last_meal_name, context.getString(R.string.widget_analysis_in_progress))
         views.setTextViewText(R.id.widget_last_meal_value, "")
         views.setTextViewText(R.id.widget_macro_value, context.getString(R.string.widget_analysis_busy_hint))
         views.setViewPadding(R.id.widget_macro_value, 0, 8, 0, statusBottomPadding)
+        views.setViewVisibility(R.id.widget_last_meal_increase_zone, android.view.View.VISIBLE)
+        views.setViewVisibility(R.id.widget_last_meal_decrease_zone, android.view.View.VISIBLE)
       } else if (state.analysisStatus == AnalysisStatus.ERROR) {
+        views.setViewVisibility(R.id.widget_last_meal_label, android.view.View.VISIBLE)
         views.setTextViewText(R.id.widget_last_meal_name, context.getString(R.string.widget_analysis_error_title))
         views.setTextViewText(R.id.widget_last_meal_value, "")
         views.setTextViewText(
@@ -72,12 +76,18 @@ object CalorieWidgetRenderer {
             state.analysisMessage ?: context.getString(R.string.widget_analysis_error_fallback),
         )
         views.setViewPadding(R.id.widget_macro_value, 0, 8, 0, statusBottomPadding)
+        views.setViewVisibility(R.id.widget_last_meal_increase_zone, android.view.View.VISIBLE)
+        views.setViewVisibility(R.id.widget_last_meal_decrease_zone, android.view.View.VISIBLE)
       } else if (lastMeal == null) {
-        views.setTextViewText(R.id.widget_last_meal_name, context.getString(R.string.widget_no_meal))
+        views.setViewVisibility(R.id.widget_last_meal_label, android.view.View.INVISIBLE)
+        views.setTextViewText(R.id.widget_last_meal_name, "")
         views.setTextViewText(R.id.widget_last_meal_value, "")
-        views.setTextViewText(R.id.widget_macro_value, context.getString(R.string.widget_macro_empty))
+        views.setTextViewText(R.id.widget_macro_value, "")
         views.setViewPadding(R.id.widget_macro_value, 0, 8, 0, macroBottomPadding)
+        views.setViewVisibility(R.id.widget_last_meal_increase_zone, android.view.View.INVISIBLE)
+        views.setViewVisibility(R.id.widget_last_meal_decrease_zone, android.view.View.INVISIBLE)
       } else {
+        views.setViewVisibility(R.id.widget_last_meal_label, android.view.View.VISIBLE)
         views.setTextViewText(R.id.widget_last_meal_name, lastMeal.mealName)
         views.setTextViewText(
             R.id.widget_last_meal_value,
@@ -93,6 +103,8 @@ object CalorieWidgetRenderer {
             ),
         )
         views.setViewPadding(R.id.widget_macro_value, 0, 8, 0, 0)
+        views.setViewVisibility(R.id.widget_last_meal_increase_zone, android.view.View.VISIBLE)
+        views.setViewVisibility(R.id.widget_last_meal_decrease_zone, android.view.View.VISIBLE)
       }
 
       views.setOnClickPendingIntent(R.id.widget_open_app_button, buildOpenAppPendingIntent(context))
@@ -136,7 +148,6 @@ object CalorieWidgetRenderer {
               CalorieWidgetProvider.ACTION_CYCLE_STEP,
           ),
       )
-      views.setOnClickPendingIntent(R.id.widget_sample_button, buildSampleMealPendingIntent(context))
       appWidgetManager.updateAppWidget(appWidgetId, views)
     }
   }
@@ -158,14 +169,6 @@ object CalorieWidgetRenderer {
         REQUEST_OPEN_APP,
         intent,
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-    )
-  }
-
-  private fun buildSampleMealPendingIntent(context: Context): PendingIntent {
-    return buildBroadcastPendingIntent(
-        context,
-        REQUEST_SAMPLE_MEAL,
-        CalorieWidgetProvider.ACTION_LOG_SAMPLE_MEAL,
     )
   }
 
@@ -239,11 +242,10 @@ object CalorieWidgetRenderer {
       (dp * context.resources.displayMetrics.density).toInt()
 
   private const val REQUEST_OPEN_APP = 1001
-  private const val REQUEST_SAMPLE_MEAL = 1002
-  private const val REQUEST_CYCLE_STEP = 1003
-  private const val REQUEST_INCREASE_REMAINING = 1004
-  private const val REQUEST_DECREASE_REMAINING = 1005
-  private const val REQUEST_INCREASE_LAST_MEAL = 1006
-  private const val REQUEST_DECREASE_LAST_MEAL = 1007
-  private const val REQUEST_NO_OP = 1008
+  private const val REQUEST_CYCLE_STEP = 1002
+  private const val REQUEST_INCREASE_REMAINING = 1003
+  private const val REQUEST_DECREASE_REMAINING = 1004
+  private const val REQUEST_INCREASE_LAST_MEAL = 1005
+  private const val REQUEST_DECREASE_LAST_MEAL = 1006
+  private const val REQUEST_NO_OP = 1007
 }

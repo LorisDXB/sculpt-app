@@ -12,7 +12,6 @@
     <string name="widget_step_button_format">Step %1$d</string>
     <string name="widget_step_button_busy">Busy</string>
     <string name="widget_add_meal">Add meal</string>
-    <string name="widget_sample_meal">Sample meal</string>
     <string name="widget_hint_plus">+</string>
     <string name="widget_hint_minus">-</string>
     <string name="widget_analysis_in_progress">Analyzing meal</string>

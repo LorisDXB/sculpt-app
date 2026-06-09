@@ -226,7 +226,7 @@
                 android:id="@+id/widget_open_app_button"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
+                android:layout_weight="3"
                 android:background="@drawable/widget_button_background"
                 android:gravity="center"
                 android:paddingHorizontal="12dp"
@@ -237,26 +237,14 @@
 
             <TextView
                 android:id="@+id/widget_step_button"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
                 android:layout_marginStart="8dp"
                 android:background="@drawable/widget_button_background"
                 android:gravity="center"
                 android:paddingHorizontal="12dp"
                 android:paddingVertical="10dp"
-                android:textColor="#FFFFFFFF"
-                android:textSize="13sp" />
-
-            <TextView
-                android:id="@+id/widget_sample_button"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:background="@drawable/widget_button_background"
-                android:gravity="center"
-                android:paddingHorizontal="12dp"
-                android:paddingVertical="10dp"
-                android:text="@string/widget_sample_meal"
                 android:textColor="#FFFFFFFF"
                 android:textSize="13sp" />
         </LinearLayout>

@@ -168,7 +168,11 @@ class MealCaptureActivity : ComponentActivity() {
             cleanupPendingRawFile()
             runOnUiThread {
               val message = userFacingFailureMessage(it)
-              WidgetStateRepository(this).markAnalysisFailed(message)
+              if (shouldRenderFailureOnWidget(message)) {
+                WidgetStateRepository(this).markAnalysisFailed(message)
+              } else {
+                WidgetStateRepository(this).clearAnalysisFeedback()
+              }
               CalorieWidgetRenderer.refreshAll(this)
               Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
               finish()
@@ -231,6 +235,9 @@ class MealCaptureActivity : ComponentActivity() {
       else -> "Could not analyze captured photo."
     }
   }
+
+  private fun shouldRenderFailureOnWidget(message: String): Boolean =
+      message != "No food detected in that image."
 
   companion object {
     private const val TAG = "SculptCapture"
