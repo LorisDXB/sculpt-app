@@ -89,6 +89,15 @@ class WidgetStateRepository(context: Context) {
     persistState(defaultState(LocalDate.now(ZoneId.systemDefault()).toString()))
   }
 
+  fun saveCapturedImage(rawImagePath: String?, compressedImagePath: String, capturedAt: String) {
+    preferences
+        .edit()
+        .putString(KEY_LAST_CAPTURED_AT, capturedAt)
+        .putString(KEY_LAST_CAPTURED_RAW_PATH, rawImagePath)
+        .putString(KEY_LAST_CAPTURED_COMPRESSED_PATH, compressedImagePath)
+        .apply()
+  }
+
   private fun scaleMeal(lastMeal: LastMealState, nextCalories: Int): LastMealState {
     if (nextCalories == 0) {
       return lastMeal.copy(calories = 0, proteinGrams = 0, carbsGrams = 0, fatGrams = 0)
@@ -185,6 +194,9 @@ class WidgetStateRepository(context: Context) {
     private const val KEY_CARBS_GRAMS = "carbs_grams"
     private const val KEY_FAT_GRAMS = "fat_grams"
     private const val KEY_SAMPLE_INDEX = "sample_index"
+    private const val KEY_LAST_CAPTURED_AT = "last_captured_at"
+    private const val KEY_LAST_CAPTURED_RAW_PATH = "last_captured_raw_path"
+    private const val KEY_LAST_CAPTURED_COMPRESSED_PATH = "last_captured_compressed_path"
 
     private const val DEFAULT_DAILY_TARGET = 2500
     private const val DEFAULT_ADJUSTMENT_STEP = 50

@@ -13,7 +13,7 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Shader
 import android.widget.RemoteViews
-import com.poissoncassant.sculptapp.MainActivity
+import com.poissoncassant.sculptapp.camera.MealCaptureActivity
 import com.poissoncassant.sculptapp.R
 import kotlin.math.max
 
@@ -132,7 +132,7 @@ object CalorieWidgetRenderer {
 
   private fun buildOpenAppPendingIntent(context: Context): PendingIntent {
     val intent =
-        Intent(context, MainActivity::class.java).apply {
+        Intent(context, MealCaptureActivity::class.java).apply {
           flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
     return PendingIntent.getActivity(

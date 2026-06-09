@@ -1,0 +1,1 @@
+- If you fail to fix something after trying twice, add debug prints and ask me to use adb logcat with the correct command.
