@@ -38,6 +38,14 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/widget_remaining_meta"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:textColor="#D9FFFFFF"
+                android:textSize="13sp" />
+
+            <TextView
                 android:id="@+id/widget_step_value"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -63,10 +71,21 @@
                 android:textSize="12sp" />
 
             <TextView
-                android:id="@+id/widget_last_meal_value"
+                android:id="@+id/widget_last_meal_name"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="#FFFFFFFF"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/widget_last_meal_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
                 android:textColor="#FFFFFFFF"
                 android:textSize="22sp"
                 android:textStyle="bold" />
@@ -102,7 +121,7 @@
             android:textSize="13sp" />
 
         <TextView
-            android:id="@+id/widget_refresh_button"
+            android:id="@+id/widget_sample_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
@@ -110,7 +129,7 @@
             android:gravity="center"
             android:paddingHorizontal="12dp"
             android:paddingVertical="10dp"
-            android:text="@string/widget_refresh_demo"
+            android:text="@string/widget_sample_meal"
             android:textColor="#FFFFFFFF"
             android:textSize="13sp" />
     </LinearLayout>

@@ -29,16 +29,18 @@ function App(): React.JSX.Element {
           Widget-first calorie tracking starts on Android.
         </Text>
         <Text style={[styles.body, {color: bodyColor}]}>
-          The home-screen widget proof of concept is wired on the native side. Add the widget,
-          then use "Refresh demo" to confirm local state updates are flowing.
+          The home-screen widget now runs from a real current-day state store. Add the widget,
+          then use "Sample meal" to confirm last-meal and daily totals update together.
         </Text>
       </View>
 
       <View style={[styles.card, {backgroundColor: cardBackground, borderColor: cardBorder}]}>
         <Text style={[styles.cardTitle, {color: cardTitleColor}]}>What is ready</Text>
-        <Text style={[styles.cardBody, {color: cardBodyColor}]}>Native widget shell</Text>
         <Text style={[styles.cardBody, {color: cardBodyColor}]}>
-          SharedPreferences-backed demo state
+          Native widget shell
+        </Text>
+        <Text style={[styles.cardBody, {color: cardBodyColor}]}>
+          SharedPreferences-backed current-day state and reset foundation
         </Text>
         <Text style={[styles.cardBody, {color: cardBodyColor}]}>
           React Native app shell for future setup and settings

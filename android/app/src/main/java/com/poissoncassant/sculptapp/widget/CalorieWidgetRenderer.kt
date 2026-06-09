@@ -12,6 +12,7 @@ import com.poissoncassant.sculptapp.R
 object CalorieWidgetRenderer {
   fun render(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
     val state = WidgetStateRepository(context).readState()
+    val lastMeal = state.lastMeal
 
     appWidgetIds.forEach { appWidgetId ->
       val views = RemoteViews(context.packageName, R.layout.calorie_widget)
@@ -20,24 +21,44 @@ object CalorieWidgetRenderer {
           context.getString(R.string.widget_remaining_format, state.caloriesRemaining),
       )
       views.setTextViewText(
-          R.id.widget_last_meal_value,
-          context.getString(R.string.widget_last_meal_format, state.lastMealCalories),
-      )
-      views.setTextViewText(
-          R.id.widget_macro_value,
+          R.id.widget_remaining_meta,
           context.getString(
-              R.string.widget_macro_format,
-              state.proteinGrams,
-              state.carbsGrams,
-              state.fatGrams,
+              R.string.widget_remaining_meta_format,
+              state.caloriesConsumedToday,
+              state.dailyCalorieTarget,
           ),
       )
       views.setTextViewText(
           R.id.widget_step_value,
           context.getString(R.string.widget_step_format, state.adjustmentStep),
       )
+
+      if (lastMeal == null) {
+        views.setTextViewText(R.id.widget_last_meal_name, context.getString(R.string.widget_no_meal))
+        views.setTextViewText(
+            R.id.widget_last_meal_value,
+            context.getString(R.string.widget_last_meal_empty_value),
+        )
+        views.setTextViewText(R.id.widget_macro_value, context.getString(R.string.widget_macro_empty))
+      } else {
+        views.setTextViewText(R.id.widget_last_meal_name, lastMeal.mealName)
+        views.setTextViewText(
+            R.id.widget_last_meal_value,
+            context.getString(R.string.widget_last_meal_format, lastMeal.calories),
+        )
+        views.setTextViewText(
+            R.id.widget_macro_value,
+            context.getString(
+                R.string.widget_macro_format,
+                lastMeal.proteinGrams,
+                lastMeal.carbsGrams,
+                lastMeal.fatGrams,
+            ),
+        )
+      }
+
       views.setOnClickPendingIntent(R.id.widget_open_app_button, buildOpenAppPendingIntent(context))
-      views.setOnClickPendingIntent(R.id.widget_refresh_button, buildRefreshPendingIntent(context))
+      views.setOnClickPendingIntent(R.id.widget_sample_button, buildSampleMealPendingIntent(context))
       appWidgetManager.updateAppWidget(appWidgetId, views)
     }
   }
@@ -62,19 +83,19 @@ object CalorieWidgetRenderer {
     )
   }
 
-  private fun buildRefreshPendingIntent(context: Context): PendingIntent {
+  private fun buildSampleMealPendingIntent(context: Context): PendingIntent {
     val intent =
         Intent(context, CalorieWidgetProvider::class.java).apply {
-          action = CalorieWidgetProvider.ACTION_REFRESH_DEMO
+          action = CalorieWidgetProvider.ACTION_LOG_SAMPLE_MEAL
         }
     return PendingIntent.getBroadcast(
         context,
-        REQUEST_REFRESH,
+        REQUEST_SAMPLE_MEAL,
         intent,
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
   }
 
   private const val REQUEST_OPEN_APP = 1001
-  private const val REQUEST_REFRESH = 1002
+  private const val REQUEST_SAMPLE_MEAL = 1002
 }

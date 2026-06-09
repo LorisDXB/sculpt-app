@@ -17,13 +17,28 @@ class CalorieWidgetProvider : AppWidgetProvider() {
   override fun onReceive(context: Context, intent: Intent) {
     super.onReceive(context, intent)
 
-    if (intent.action == ACTION_REFRESH_DEMO) {
-      WidgetStateRepository(context).cycleDemoState()
-      CalorieWidgetRenderer.refreshAll(context)
+    when (intent.action) {
+      Intent.ACTION_DATE_CHANGED,
+      Intent.ACTION_TIME_CHANGED,
+      Intent.ACTION_TIMEZONE_CHANGED,
+      Intent.ACTION_BOOT_COMPLETED -> {
+        CalorieWidgetRenderer.refreshAll(context)
+      }
+      ACTION_LOG_SAMPLE_MEAL -> {
+        WidgetStateRepository(context).logSampleMeal()
+        CalorieWidgetRenderer.refreshAll(context)
+      }
+      ACTION_RESET_TODAY -> {
+        WidgetStateRepository(context).resetToday()
+        CalorieWidgetRenderer.refreshAll(context)
+      }
     }
   }
 
   companion object {
-    const val ACTION_REFRESH_DEMO = "com.poissoncassant.sculptapp.widget.ACTION_REFRESH_DEMO"
+    const val ACTION_LOG_SAMPLE_MEAL =
+        "com.poissoncassant.sculptapp.widget.ACTION_LOG_SAMPLE_MEAL"
+    const val ACTION_RESET_TODAY =
+        "com.poissoncassant.sculptapp.widget.ACTION_RESET_TODAY"
   }
 }
