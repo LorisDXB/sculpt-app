@@ -118,6 +118,9 @@ class MealCaptureActivity : ComponentActivity() {
       return
     }
 
+    WidgetStateRepository(this).markAnalysisStarted()
+    CalorieWidgetRenderer.refreshAll(this)
+
     Thread {
       runCatching {
             val apiKey = AppConfigRepository(this).getApiKey()
@@ -154,6 +157,7 @@ class MealCaptureActivity : ComponentActivity() {
           .onSuccess {
             runOnUiThread {
               revokePendingUriPermission()
+              cleanupPendingRawFile()
               Toast.makeText(this, "Meal analyzed and added.", Toast.LENGTH_SHORT).show()
               finish()
             }
@@ -164,6 +168,8 @@ class MealCaptureActivity : ComponentActivity() {
             cleanupPendingRawFile()
             runOnUiThread {
               val message = userFacingFailureMessage(it)
+              WidgetStateRepository(this).markAnalysisFailed(message)
+              CalorieWidgetRenderer.refreshAll(this)
               Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
               finish()
             }

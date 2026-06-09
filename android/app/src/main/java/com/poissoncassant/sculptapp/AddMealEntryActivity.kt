@@ -1,6 +1,8 @@
 package com.poissoncassant.sculptapp
 
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -20,6 +22,10 @@ class AddMealEntryActivity : ComponentActivity() {
           Intent(this, MainActivity::class.java).apply {
             putExtra(EXTRA_OPEN_API_KEY_SETUP, true)
           }
+        } else if (!isNetworkAvailable()) {
+          Toast.makeText(this, "No internet connection. Meal analysis needs network.", Toast.LENGTH_LONG)
+              .show()
+          null
         } else {
           Intent(this, MealCaptureActivity::class.java)
         }
@@ -27,6 +33,13 @@ class AddMealEntryActivity : ComponentActivity() {
     nextIntent?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
     nextIntent?.let(::startActivity)
     finish()
+  }
+
+  private fun isNetworkAvailable(): Boolean {
+    val connectivityManager = getSystemService(ConnectivityManager::class.java) ?: return false
+    val network = connectivityManager.activeNetwork ?: return false
+    val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
+    return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
   }
 
   companion object {

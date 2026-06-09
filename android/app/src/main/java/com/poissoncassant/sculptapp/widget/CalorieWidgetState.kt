@@ -6,9 +6,17 @@ data class CalorieWidgetState(
     val caloriesConsumedToday: Int,
     val adjustmentStep: Int,
     val lastMeal: LastMealState?,
+    val analysisStatus: AnalysisStatus,
+    val analysisMessage: String?,
 ) {
   val caloriesRemaining: Int
     get() = dailyCalorieTarget - caloriesConsumedToday
+}
+
+enum class AnalysisStatus {
+  IDLE,
+  ANALYZING,
+  ERROR,
 }
 
 data class LastMealState(

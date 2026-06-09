@@ -1,13 +1,15 @@
 package com.poissoncassant.sculptapp.widget
 
 import android.content.Context
+import java.io.File
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 
 class WidgetStateRepository(context: Context) {
+  private val appContext = context.applicationContext
   private val preferences =
-      context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+      appContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
 
   fun readState(): CalorieWidgetState {
     val today = LocalDate.now(ZoneId.systemDefault()).toString()
@@ -20,7 +22,14 @@ class WidgetStateRepository(context: Context) {
         initialState
       }
       storedDate != today -> {
-        val resetState = readPersistedState(storedDate).copy(date = today, caloriesConsumedToday = 0, lastMeal = null)
+        val resetState =
+            readPersistedState(storedDate).copy(
+                date = today,
+                caloriesConsumedToday = 0,
+                lastMeal = null,
+                analysisStatus = AnalysisStatus.IDLE,
+                analysisMessage = null,
+            )
         persistState(resetState)
         resetState
       }
@@ -101,7 +110,28 @@ class WidgetStateRepository(context: Context) {
   }
 
   fun clearAllLocalData() {
+    deleteStoredCaptureFiles()
     preferences.edit().clear().apply()
+  }
+
+  fun markAnalysisStarted() {
+    val current = readState()
+    persistState(
+        current.copy(
+            analysisStatus = AnalysisStatus.ANALYZING,
+            analysisMessage = "Analyzing...",
+        ),
+    )
+  }
+
+  fun markAnalysisFailed(message: String) {
+    val current = readState()
+    persistState(
+        current.copy(
+            analysisStatus = AnalysisStatus.ERROR,
+            analysisMessage = message,
+        ),
+    )
   }
 
   fun logAnalyzedMeal(
@@ -128,11 +158,15 @@ class WidgetStateRepository(context: Context) {
         current.copy(
             caloriesConsumedToday = (current.caloriesConsumedToday + sanitizedCalories).coerceAtLeast(0),
             lastMeal = nextMeal,
+            analysisStatus = AnalysisStatus.IDLE,
+            analysisMessage = null,
         ),
     )
   }
 
   fun saveCapturedImage(rawImagePath: String?, compressedImagePath: String, capturedAt: String) {
+    deleteFileIfExists(preferences.getString(KEY_LAST_CAPTURED_RAW_PATH, null))
+    deleteFileIfExists(preferences.getString(KEY_LAST_CAPTURED_COMPRESSED_PATH, null))
     preferences
         .edit()
         .putString(KEY_LAST_CAPTURED_AT, capturedAt)
@@ -170,6 +204,11 @@ class WidgetStateRepository(context: Context) {
           dailyCalorieTarget = preferences.getInt(KEY_DAILY_CALORIE_TARGET, DEFAULT_DAILY_TARGET),
           caloriesConsumedToday = preferences.getInt(KEY_CALORIES_CONSUMED_TODAY, 0),
           adjustmentStep = preferences.getInt(KEY_ADJUSTMENT_STEP, DEFAULT_ADJUSTMENT_STEP),
+          analysisStatus =
+              preferences.getString(KEY_ANALYSIS_STATUS, AnalysisStatus.IDLE.name)?.let {
+                runCatching { AnalysisStatus.valueOf(it) }.getOrDefault(AnalysisStatus.IDLE)
+              } ?: AnalysisStatus.IDLE,
+          analysisMessage = preferences.getString(KEY_ANALYSIS_MESSAGE, null),
           lastMeal =
               if (!preferences.getBoolean(KEY_HAS_LAST_MEAL, false)) {
                 null
@@ -194,7 +233,13 @@ class WidgetStateRepository(context: Context) {
         .putInt(KEY_CALORIES_CONSUMED_TODAY, state.caloriesConsumedToday)
         .putInt(KEY_ADJUSTMENT_STEP, state.adjustmentStep)
         .putBoolean(KEY_HAS_LAST_MEAL, state.lastMeal != null)
+        .putString(KEY_ANALYSIS_STATUS, state.analysisStatus.name)
         .apply {
+          if (state.analysisMessage.isNullOrBlank()) {
+            remove(KEY_ANALYSIS_MESSAGE)
+          } else {
+            putString(KEY_ANALYSIS_MESSAGE, state.analysisMessage)
+          }
           if (state.lastMeal == null) {
             remove(KEY_LAST_MEAL_TIMESTAMP)
             remove(KEY_LAST_MEAL_NAME)
@@ -221,7 +266,22 @@ class WidgetStateRepository(context: Context) {
           caloriesConsumedToday = 0,
           adjustmentStep = DEFAULT_ADJUSTMENT_STEP,
           lastMeal = null,
+          analysisStatus = AnalysisStatus.IDLE,
+          analysisMessage = null,
       )
+
+  private fun deleteStoredCaptureFiles() {
+    deleteFileIfExists(preferences.getString(KEY_LAST_CAPTURED_RAW_PATH, null))
+    deleteFileIfExists(preferences.getString(KEY_LAST_CAPTURED_COMPRESSED_PATH, null))
+  }
+
+  private fun deleteFileIfExists(path: String?) {
+    if (path.isNullOrBlank()) {
+      return
+    }
+
+    runCatching { File(path).delete() }
+  }
 
   companion object {
     private const val PREFERENCES_NAME = "sculpt_widget_state"
@@ -240,6 +300,8 @@ class WidgetStateRepository(context: Context) {
     private const val KEY_LAST_CAPTURED_AT = "last_captured_at"
     private const val KEY_LAST_CAPTURED_RAW_PATH = "last_captured_raw_path"
     private const val KEY_LAST_CAPTURED_COMPRESSED_PATH = "last_captured_compressed_path"
+    private const val KEY_ANALYSIS_STATUS = "analysis_status"
+    private const val KEY_ANALYSIS_MESSAGE = "analysis_message"
 
     private const val DEFAULT_DAILY_TARGET = 2500
     private const val DEFAULT_ADJUSTMENT_STEP = 50

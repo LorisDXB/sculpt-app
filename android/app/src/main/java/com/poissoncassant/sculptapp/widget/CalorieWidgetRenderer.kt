@@ -22,6 +22,7 @@ object CalorieWidgetRenderer {
     val state = WidgetStateRepository(context).readState()
     val lastMeal = state.lastMeal
     val macroBottomPadding = dpToPx(context, 20)
+    val statusBottomPadding = dpToPx(context, 12)
 
     appWidgetIds.forEach { appWidgetId ->
       val views = RemoteViews(context.packageName, R.layout.calorie_widget)
@@ -51,10 +52,27 @@ object CalorieWidgetRenderer {
       )
       views.setTextViewText(
           R.id.widget_step_button,
-          context.getString(R.string.widget_step_button_format, state.adjustmentStep),
+          if (state.analysisStatus == AnalysisStatus.ANALYZING) {
+            context.getString(R.string.widget_step_button_busy)
+          } else {
+            context.getString(R.string.widget_step_button_format, state.adjustmentStep)
+          },
       )
 
-      if (lastMeal == null) {
+      if (state.analysisStatus == AnalysisStatus.ANALYZING) {
+        views.setTextViewText(R.id.widget_last_meal_name, context.getString(R.string.widget_analysis_in_progress))
+        views.setTextViewText(R.id.widget_last_meal_value, "")
+        views.setTextViewText(R.id.widget_macro_value, context.getString(R.string.widget_analysis_busy_hint))
+        views.setViewPadding(R.id.widget_macro_value, 0, 8, 0, statusBottomPadding)
+      } else if (state.analysisStatus == AnalysisStatus.ERROR) {
+        views.setTextViewText(R.id.widget_last_meal_name, context.getString(R.string.widget_analysis_error_title))
+        views.setTextViewText(R.id.widget_last_meal_value, "")
+        views.setTextViewText(
+            R.id.widget_macro_value,
+            state.analysisMessage ?: context.getString(R.string.widget_analysis_error_fallback),
+        )
+        views.setViewPadding(R.id.widget_macro_value, 0, 8, 0, statusBottomPadding)
+      } else if (lastMeal == null) {
         views.setTextViewText(R.id.widget_last_meal_name, context.getString(R.string.widget_no_meal))
         views.setTextViewText(R.id.widget_last_meal_value, "")
         views.setTextViewText(R.id.widget_macro_value, context.getString(R.string.widget_macro_empty))

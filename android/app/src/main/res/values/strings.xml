@@ -10,8 +10,13 @@
     <string name="widget_macro_empty">No macros yet</string>
     <string name="widget_no_meal">No meal today</string>
     <string name="widget_step_button_format">Step %1$d</string>
+    <string name="widget_step_button_busy">Busy</string>
     <string name="widget_add_meal">Add meal</string>
     <string name="widget_sample_meal">Sample meal</string>
     <string name="widget_hint_plus">+</string>
     <string name="widget_hint_minus">-</string>
+    <string name="widget_analysis_in_progress">Analyzing meal</string>
+    <string name="widget_analysis_busy_hint">Please wait...</string>
+    <string name="widget_analysis_error_title">Last scan failed</string>
+    <string name="widget_analysis_error_fallback">Try taking the photo again</string>
 </resources>
