@@ -51,6 +51,15 @@ object CalorieWidgetRenderer {
           ),
       )
       views.setTextViewText(
+          R.id.widget_total_macro_value,
+          context.getString(
+              R.string.widget_macro_format,
+              state.totalProteinGrams,
+              state.totalCarbsGrams,
+              state.totalFatGrams,
+          ),
+      )
+      views.setTextViewText(
           R.id.widget_step_button,
           if (state.analysisStatus == AnalysisStatus.ANALYZING) {
             context.getString(R.string.widget_step_button_busy)

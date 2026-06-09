@@ -26,6 +26,9 @@ class WidgetStateRepository(context: Context) {
             readPersistedState(storedDate).copy(
                 date = today,
                 caloriesConsumedToday = 0,
+                totalProteinGrams = 0,
+                totalCarbsGrams = 0,
+                totalFatGrams = 0,
                 lastMeal = null,
                 analysisStatus = AnalysisStatus.IDLE,
                 analysisMessage = null,
@@ -51,12 +54,23 @@ class WidgetStateRepository(context: Context) {
             fatGrams = sampleTemplate.fatGrams,
         )
     val previousMealCalories = current.lastMeal?.calories ?: 0
+    val previousMealProtein = current.lastMeal?.proteinGrams ?: 0
+    val previousMealCarbs = current.lastMeal?.carbsGrams ?: 0
+    val previousMealFat = current.lastMeal?.fatGrams ?: 0
     val nextConsumed =
         (current.caloriesConsumedToday - previousMealCalories + sampleMeal.calories).coerceAtLeast(0)
 
     persistState(
         current.copy(
             caloriesConsumedToday = nextConsumed,
+            totalProteinGrams =
+                (current.totalProteinGrams - previousMealProtein + sampleMeal.proteinGrams)
+                    .coerceAtLeast(0),
+            totalCarbsGrams =
+                (current.totalCarbsGrams - previousMealCarbs + sampleMeal.carbsGrams)
+                    .coerceAtLeast(0),
+            totalFatGrams =
+                (current.totalFatGrams - previousMealFat + sampleMeal.fatGrams).coerceAtLeast(0),
             lastMeal = sampleMeal,
         ),
     )
@@ -88,13 +102,23 @@ class WidgetStateRepository(context: Context) {
     val lastMeal = current.lastMeal ?: return
     val delta = if (increase) current.adjustmentStep else -current.adjustmentStep
     val nextMealCalories = (lastMeal.calories + delta).coerceAtLeast(0)
-    val appliedDelta = nextMealCalories - lastMeal.calories
+    val nextScaledMeal = scaleMeal(lastMeal, nextMealCalories)
+    val appliedDelta = nextScaledMeal.calories - lastMeal.calories
     val nextConsumed = (current.caloriesConsumedToday + appliedDelta).coerceAtLeast(0)
 
     persistState(
         current.copy(
             caloriesConsumedToday = nextConsumed,
-            lastMeal = scaleMeal(lastMeal, nextMealCalories),
+            totalProteinGrams =
+                (current.totalProteinGrams + nextScaledMeal.proteinGrams - lastMeal.proteinGrams)
+                    .coerceAtLeast(0),
+            totalCarbsGrams =
+                (current.totalCarbsGrams + nextScaledMeal.carbsGrams - lastMeal.carbsGrams)
+                    .coerceAtLeast(0),
+            totalFatGrams =
+                (current.totalFatGrams + nextScaledMeal.fatGrams - lastMeal.fatGrams)
+                    .coerceAtLeast(0),
+            lastMeal = nextScaledMeal,
         ),
     )
   }
@@ -167,6 +191,9 @@ class WidgetStateRepository(context: Context) {
     persistState(
         current.copy(
             caloriesConsumedToday = (current.caloriesConsumedToday + sanitizedCalories).coerceAtLeast(0),
+            totalProteinGrams = (current.totalProteinGrams + nextMeal.proteinGrams).coerceAtLeast(0),
+            totalCarbsGrams = (current.totalCarbsGrams + nextMeal.carbsGrams).coerceAtLeast(0),
+            totalFatGrams = (current.totalFatGrams + nextMeal.fatGrams).coerceAtLeast(0),
             lastMeal = nextMeal,
             analysisStatus = AnalysisStatus.IDLE,
             analysisMessage = null,
@@ -200,11 +227,15 @@ class WidgetStateRepository(context: Context) {
     }
 
     val ratio = nextCalories.toDouble() / lastMeal.calories.toDouble()
+    val protein = kotlin.math.round(lastMeal.proteinGrams * ratio).toInt().coerceAtLeast(0)
+    val carbs = kotlin.math.round(lastMeal.carbsGrams * ratio).toInt().coerceAtLeast(0)
+    val fat = kotlin.math.round(lastMeal.fatGrams * ratio).toInt().coerceAtLeast(0)
+
     return lastMeal.copy(
         calories = nextCalories,
-        proteinGrams = (lastMeal.proteinGrams * ratio).toInt(),
-        carbsGrams = (lastMeal.carbsGrams * ratio).toInt(),
-        fatGrams = (lastMeal.fatGrams * ratio).toInt(),
+        proteinGrams = protein,
+        carbsGrams = carbs,
+        fatGrams = fat,
     )
   }
 
@@ -213,6 +244,9 @@ class WidgetStateRepository(context: Context) {
           date = date,
           dailyCalorieTarget = preferences.getInt(KEY_DAILY_CALORIE_TARGET, DEFAULT_DAILY_TARGET),
           caloriesConsumedToday = preferences.getInt(KEY_CALORIES_CONSUMED_TODAY, 0),
+          totalProteinGrams = preferences.getInt(KEY_TOTAL_PROTEIN_GRAMS, 0),
+          totalCarbsGrams = preferences.getInt(KEY_TOTAL_CARBS_GRAMS, 0),
+          totalFatGrams = preferences.getInt(KEY_TOTAL_FAT_GRAMS, 0),
           adjustmentStep = preferences.getInt(KEY_ADJUSTMENT_STEP, DEFAULT_ADJUSTMENT_STEP),
           analysisStatus =
               preferences.getString(KEY_ANALYSIS_STATUS, AnalysisStatus.IDLE.name)?.let {
@@ -241,6 +275,9 @@ class WidgetStateRepository(context: Context) {
         .putString(KEY_DATE, state.date)
         .putInt(KEY_DAILY_CALORIE_TARGET, state.dailyCalorieTarget)
         .putInt(KEY_CALORIES_CONSUMED_TODAY, state.caloriesConsumedToday)
+        .putInt(KEY_TOTAL_PROTEIN_GRAMS, state.totalProteinGrams)
+        .putInt(KEY_TOTAL_CARBS_GRAMS, state.totalCarbsGrams)
+        .putInt(KEY_TOTAL_FAT_GRAMS, state.totalFatGrams)
         .putInt(KEY_ADJUSTMENT_STEP, state.adjustmentStep)
         .putBoolean(KEY_HAS_LAST_MEAL, state.lastMeal != null)
         .putString(KEY_ANALYSIS_STATUS, state.analysisStatus.name)
@@ -274,6 +311,9 @@ class WidgetStateRepository(context: Context) {
           date = date,
           dailyCalorieTarget = DEFAULT_DAILY_TARGET,
           caloriesConsumedToday = 0,
+          totalProteinGrams = 0,
+          totalCarbsGrams = 0,
+          totalFatGrams = 0,
           adjustmentStep = DEFAULT_ADJUSTMENT_STEP,
           lastMeal = null,
           analysisStatus = AnalysisStatus.IDLE,
@@ -298,6 +338,9 @@ class WidgetStateRepository(context: Context) {
     private const val KEY_DATE = "date"
     private const val KEY_DAILY_CALORIE_TARGET = "daily_calorie_target"
     private const val KEY_CALORIES_CONSUMED_TODAY = "calories_consumed_today"
+    private const val KEY_TOTAL_PROTEIN_GRAMS = "total_protein_grams"
+    private const val KEY_TOTAL_CARBS_GRAMS = "total_carbs_grams"
+    private const val KEY_TOTAL_FAT_GRAMS = "total_fat_grams"
     private const val KEY_ADJUSTMENT_STEP = "adjustment_step"
     private const val KEY_HAS_LAST_MEAL = "has_last_meal"
     private const val KEY_LAST_MEAL_TIMESTAMP = "last_meal_timestamp"

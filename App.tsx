@@ -13,6 +13,7 @@ import {
 import {SafeAreaView} from 'react-native-safe-area-context';
 
 type SculptSettings = {
+  caloriesConsumedToday: number;
   dailyCalorieTarget: number;
   hasApiKey: boolean;
   hasValidatedApiKey: boolean;
@@ -30,36 +31,42 @@ type SculptSettingsModule = {
 
 const fallbackSettingsModule: SculptSettingsModule = {
   clearApiKey: async () => ({
+    caloriesConsumedToday: 0,
     dailyCalorieTarget: 2500,
     hasApiKey: false,
     hasValidatedApiKey: false,
     lastValidationMessage: null,
   }),
   clearAllLocalData: async () => ({
+    caloriesConsumedToday: 0,
     dailyCalorieTarget: 2500,
     hasApiKey: false,
     hasValidatedApiKey: false,
     lastValidationMessage: null,
   }),
   getSettings: async () => ({
+    caloriesConsumedToday: 0,
     dailyCalorieTarget: 2500,
     hasApiKey: false,
     hasValidatedApiKey: false,
     lastValidationMessage: null,
   }),
   resetToday: async () => ({
+    caloriesConsumedToday: 0,
     dailyCalorieTarget: 2500,
     hasApiKey: false,
     hasValidatedApiKey: false,
     lastValidationMessage: null,
   }),
   setDailyCalorieTarget: async target => ({
+    caloriesConsumedToday: 0,
     dailyCalorieTarget: target,
     hasApiKey: false,
     hasValidatedApiKey: false,
     lastValidationMessage: null,
   }),
   validateAndStoreApiKey: async () => ({
+    caloriesConsumedToday: 0,
     dailyCalorieTarget: 2500,
     hasApiKey: true,
     hasValidatedApiKey: true,
@@ -191,13 +198,19 @@ function App(): React.JSX.Element {
   }
 
   const requiresKey = !settings?.hasValidatedApiKey;
+  const progress =
+    settings && settings.dailyCalorieTarget > 0
+      ? Math.max(0, Math.min(1, settings.caloriesConsumedToday / settings.dailyCalorieTarget))
+      : 0;
+  const accentColor = accentFromProgress(progress);
+  const accentSoft = withAlpha(accentColor, 0.18);
 
   return (
     <SafeAreaView style={styles.screen}>
       <StatusBar barStyle="light-content" backgroundColor="#09111e" />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.hero}>
-          <Text style={styles.eyebrow}>Sculpt control panel</Text>
+          <Text style={[styles.eyebrow, {color: accentColor}]}>Sculpt control panel</Text>
           <Text style={styles.title}>
             {requiresKey
               ? 'Validate your API key to unlock Add meal.'
@@ -232,6 +245,7 @@ function App(): React.JSX.Element {
             onPress={saveApiKey}
             style={({pressed}) => [
               styles.primaryButton,
+              {backgroundColor: accentColor},
               (pressed || isSavingKey || apiKey.trim().length === 0) && styles.buttonPressed,
             ]}>
             {isSavingKey ? (
@@ -268,6 +282,7 @@ function App(): React.JSX.Element {
             onPress={saveDailyTarget}
             style={({pressed}) => [
               styles.primaryButton,
+              {backgroundColor: accentColor},
               (pressed || isSavingTarget) && styles.buttonPressed,
             ]}>
             {isSavingTarget ? (
@@ -296,10 +311,12 @@ function App(): React.JSX.Element {
                   : 'missing'}
             </Text>
           </Text>
-          {statusMessage ? <Text style={styles.statusMessage}>{statusMessage}</Text> : null}
+          {statusMessage ? (
+            <Text style={[styles.statusMessage, {color: accentColor}]}>{statusMessage}</Text>
+          ) : null}
         </View>
 
-        <View style={styles.card}>
+        <View style={[styles.card, {borderColor: accentSoft}]}>
           <Text style={styles.cardTitle}>Maintenance</Text>
           <Text style={styles.cardBody}>
             Use these only when you want to reset the day or wipe local state during testing.
@@ -404,7 +421,6 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     alignItems: 'center',
-    backgroundColor: '#d97706',
     borderRadius: 16,
     justifyContent: 'center',
     minHeight: 48,
@@ -455,11 +471,61 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   statusMessage: {
-    color: '#f59e0b',
     fontSize: 14,
     lineHeight: 20,
     marginTop: 4,
   },
 });
+
+function accentFromProgress(progress: number): string {
+  const clamped = Math.max(0, Math.min(1, progress));
+  const hue = 135 - 135 * clamped;
+  return hsvToHex(hue, 0.72, 0.88);
+}
+
+function withAlpha(hexColor: string, alpha: number): string {
+  const normalized = Math.max(0, Math.min(1, alpha));
+  const alphaHex = Math.round(normalized * 255)
+    .toString(16)
+    .padStart(2, '0');
+  return `${hexColor}${alphaHex}`;
+}
+
+function hsvToHex(h: number, s: number, v: number): string {
+  const c = v * s;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = v - c;
+
+  let r = 0;
+  let g = 0;
+  let b = 0;
+
+  if (h < 60) {
+    r = c;
+    g = x;
+  } else if (h < 120) {
+    r = x;
+    g = c;
+  } else if (h < 180) {
+    g = c;
+    b = x;
+  } else if (h < 240) {
+    g = x;
+    b = c;
+  } else if (h < 300) {
+    r = x;
+    b = c;
+  } else {
+    r = c;
+    b = x;
+  }
+
+  const toHex = (value: number) =>
+    Math.round((value + m) * 255)
+      .toString(16)
+      .padStart(2, '0');
+
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
 
 export default App;

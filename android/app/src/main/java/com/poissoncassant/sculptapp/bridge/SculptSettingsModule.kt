@@ -95,6 +95,7 @@ class SculptSettingsModule(reactContext: ReactApplicationContext) :
         val config = AppConfigRepository(reactApplicationContext)
 
         putInt("dailyCalorieTarget", widgetState.dailyCalorieTarget)
+        putInt("caloriesConsumedToday", widgetState.caloriesConsumedToday)
         putBoolean("hasValidatedApiKey", config.hasValidatedApiKey())
         putBoolean("hasApiKey", config.getApiKey() != null)
         putString("lastValidationMessage", config.getLastValidationMessage())
