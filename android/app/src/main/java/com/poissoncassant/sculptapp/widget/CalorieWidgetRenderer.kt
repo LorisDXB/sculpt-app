@@ -21,6 +21,7 @@ object CalorieWidgetRenderer {
   fun render(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
     val state = WidgetStateRepository(context).readState()
     val lastMeal = state.lastMeal
+    val macroBottomPadding = dpToPx(context, 20)
 
     appWidgetIds.forEach { appWidgetId ->
       val views = RemoteViews(context.packageName, R.layout.calorie_widget)
@@ -55,11 +56,9 @@ object CalorieWidgetRenderer {
 
       if (lastMeal == null) {
         views.setTextViewText(R.id.widget_last_meal_name, context.getString(R.string.widget_no_meal))
-        views.setTextViewText(
-            R.id.widget_last_meal_value,
-            context.getString(R.string.widget_last_meal_empty_value),
-        )
+        views.setTextViewText(R.id.widget_last_meal_value, "")
         views.setTextViewText(R.id.widget_macro_value, context.getString(R.string.widget_macro_empty))
+        views.setViewPadding(R.id.widget_macro_value, 0, 8, 0, macroBottomPadding)
       } else {
         views.setTextViewText(R.id.widget_last_meal_name, lastMeal.mealName)
         views.setTextViewText(
@@ -75,6 +74,7 @@ object CalorieWidgetRenderer {
                 lastMeal.fatGrams,
             ),
         )
+        views.setViewPadding(R.id.widget_macro_value, 0, 8, 0, 0)
       }
 
       views.setOnClickPendingIntent(R.id.widget_open_app_button, buildOpenAppPendingIntent(context))
@@ -216,6 +216,9 @@ object CalorieWidgetRenderer {
     val blue = (Color.blue(from) * inverse + Color.blue(to) * clamped).toInt()
     return Color.argb(alpha, red, green, blue)
   }
+
+  private fun dpToPx(context: Context, dp: Int): Int =
+      (dp * context.resources.displayMetrics.density).toInt()
 
   private const val REQUEST_OPEN_APP = 1001
   private const val REQUEST_SAMPLE_MEAL = 1002

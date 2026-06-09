@@ -6,7 +6,6 @@
     <string name="widget_remaining_format">%1$d kcal left</string>
     <string name="widget_remaining_meta_format">%1$d eaten / %2$d target</string>
     <string name="widget_last_meal_format">%1$d kcal</string>
-    <string name="widget_last_meal_empty_value">Waiting for first meal</string>
     <string name="widget_macro_format">P %1$dg  C %2$dg  F %3$dg</string>
     <string name="widget_macro_empty">No macros yet</string>
     <string name="widget_no_meal">No meal today</string>
