@@ -41,6 +41,10 @@ class AppConfigRepository(context: Context) {
         .apply()
   }
 
+  fun clearAll() {
+    preferences.edit().clear().apply()
+  }
+
   companion object {
     private const val PREFERENCES_NAME = "sculpt_app_config"
     private const val KEY_OPENAI_API_KEY = "openai_api_key"

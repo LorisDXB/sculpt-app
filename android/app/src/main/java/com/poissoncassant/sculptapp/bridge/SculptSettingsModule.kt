@@ -66,6 +66,29 @@ class SculptSettingsModule(reactContext: ReactApplicationContext) :
     }
   }
 
+  @ReactMethod
+  fun resetToday(promise: Promise) {
+    try {
+      WidgetStateRepository(reactApplicationContext).resetToday()
+      CalorieWidgetRenderer.refreshAll(reactApplicationContext)
+      promise.resolve(buildSettingsMap())
+    } catch (exception: Exception) {
+      promise.reject("reset_today_failed", exception)
+    }
+  }
+
+  @ReactMethod
+  fun clearAllLocalData(promise: Promise) {
+    try {
+      WidgetStateRepository(reactApplicationContext).clearAllLocalData()
+      AppConfigRepository(reactApplicationContext).clearAll()
+      CalorieWidgetRenderer.refreshAll(reactApplicationContext)
+      promise.resolve(buildSettingsMap())
+    } catch (exception: Exception) {
+      promise.reject("clear_all_local_data_failed", exception)
+    }
+  }
+
   private fun buildSettingsMap() =
       Arguments.createMap().apply {
         val widgetState = WidgetStateRepository(reactApplicationContext).readState()

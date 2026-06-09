@@ -11,19 +11,21 @@ class AddMealEntryActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
 
+    val configRepository = AppConfigRepository(this)
+
     val nextIntent =
-        if (AppConfigRepository(this).hasValidatedApiKey()) {
-          Intent(this, MealCaptureActivity::class.java)
-        } else {
+        if (!configRepository.hasValidatedApiKey()) {
           Toast.makeText(this, "Set and validate your API key before adding meals.", Toast.LENGTH_LONG)
               .show()
           Intent(this, MainActivity::class.java).apply {
             putExtra(EXTRA_OPEN_API_KEY_SETUP, true)
           }
+        } else {
+          Intent(this, MealCaptureActivity::class.java)
         }
 
-    nextIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-    startActivity(nextIntent)
+    nextIntent?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+    nextIntent?.let(::startActivity)
     finish()
   }
 

@@ -21,7 +21,9 @@ type SculptSettings = {
 
 type SculptSettingsModule = {
   clearApiKey: () => Promise<SculptSettings>;
+  clearAllLocalData: () => Promise<SculptSettings>;
   getSettings: () => Promise<SculptSettings>;
+  resetToday: () => Promise<SculptSettings>;
   setDailyCalorieTarget: (target: number) => Promise<SculptSettings>;
   validateAndStoreApiKey: (apiKey: string) => Promise<SculptSettings>;
 };
@@ -33,7 +35,19 @@ const fallbackSettingsModule: SculptSettingsModule = {
     hasValidatedApiKey: false,
     lastValidationMessage: null,
   }),
+  clearAllLocalData: async () => ({
+    dailyCalorieTarget: 2500,
+    hasApiKey: false,
+    hasValidatedApiKey: false,
+    lastValidationMessage: null,
+  }),
   getSettings: async () => ({
+    dailyCalorieTarget: 2500,
+    hasApiKey: false,
+    hasValidatedApiKey: false,
+    lastValidationMessage: null,
+  }),
+  resetToday: async () => ({
     dailyCalorieTarget: 2500,
     hasApiKey: false,
     hasValidatedApiKey: false,
@@ -62,6 +76,7 @@ function App(): React.JSX.Element {
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingKey, setIsSavingKey] = useState(false);
   const [isSavingTarget, setIsSavingTarget] = useState(false);
+  const [isRunningMaintenance, setIsRunningMaintenance] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -131,6 +146,38 @@ function App(): React.JSX.Element {
       setStatusMessage('API key cleared.');
     } catch {
       setStatusMessage('Could not clear API key.');
+    }
+  };
+
+  const resetToday = async () => {
+    setIsRunningMaintenance(true);
+    setStatusMessage(null);
+
+    try {
+      const nextSettings = await sculptSettings.resetToday();
+      setSettings(nextSettings);
+      setStatusMessage('Today was reset.');
+    } catch {
+      setStatusMessage('Could not reset today.');
+    } finally {
+      setIsRunningMaintenance(false);
+    }
+  };
+
+  const clearAllLocalData = async () => {
+    setIsRunningMaintenance(true);
+    setStatusMessage(null);
+
+    try {
+      const nextSettings = await sculptSettings.clearAllLocalData();
+      setSettings(nextSettings);
+      setApiKey('');
+      setDailyTarget(String(nextSettings.dailyCalorieTarget));
+      setStatusMessage('All local data was cleared.');
+    } catch {
+      setStatusMessage('Could not clear local data.');
+    } finally {
+      setIsRunningMaintenance(false);
     }
   };
 
@@ -251,6 +298,35 @@ function App(): React.JSX.Element {
           </Text>
           {statusMessage ? <Text style={styles.statusMessage}>{statusMessage}</Text> : null}
         </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Maintenance</Text>
+          <Text style={styles.cardBody}>
+            Use these only when you want to reset the day or wipe local state during testing.
+          </Text>
+          <Pressable
+            disabled={isRunningMaintenance}
+            onPress={resetToday}
+            style={({pressed}) => [
+              styles.secondaryButton,
+              (pressed || isRunningMaintenance) && styles.buttonPressed,
+            ]}>
+            {isRunningMaintenance ? (
+              <ActivityIndicator color="#d6dfeb" />
+            ) : (
+              <Text style={styles.secondaryButtonText}>Reset today</Text>
+            )}
+          </Pressable>
+          <Pressable
+            disabled={isRunningMaintenance}
+            onPress={clearAllLocalData}
+            style={({pressed}) => [
+              styles.dangerButton,
+              (pressed || isRunningMaintenance) && styles.buttonPressed,
+            ]}>
+            <Text style={styles.dangerButtonText}>Clear all local data</Text>
+          </Pressable>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -346,6 +422,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
+  dangerButton: {
+    alignItems: 'center',
+    backgroundColor: '#7f1d1d',
+    borderRadius: 16,
+    justifyContent: 'center',
+    marginTop: 10,
+    minHeight: 48,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
   buttonPressed: {
     opacity: 0.7,
   },
@@ -358,6 +444,11 @@ const styles = StyleSheet.create({
     color: '#d6dfeb',
     fontSize: 15,
     fontWeight: '600',
+  },
+  dangerButtonText: {
+    color: '#fee2e2',
+    fontSize: 15,
+    fontWeight: '700',
   },
   inlineHighlight: {
     color: '#f8fafc',

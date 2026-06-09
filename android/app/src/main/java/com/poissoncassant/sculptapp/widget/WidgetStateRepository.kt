@@ -91,7 +91,17 @@ class WidgetStateRepository(context: Context) {
   }
 
   fun resetToday() {
-    persistState(defaultState(LocalDate.now(ZoneId.systemDefault()).toString()))
+    val current = readState()
+    persistState(
+        defaultState(LocalDate.now(ZoneId.systemDefault()).toString()).copy(
+            dailyCalorieTarget = current.dailyCalorieTarget,
+            adjustmentStep = current.adjustmentStep,
+        ),
+    )
+  }
+
+  fun clearAllLocalData() {
+    preferences.edit().clear().apply()
   }
 
   fun logAnalyzedMeal(

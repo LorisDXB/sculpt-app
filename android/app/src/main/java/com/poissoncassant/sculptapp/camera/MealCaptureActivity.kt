@@ -163,12 +163,7 @@ class MealCaptureActivity : ComponentActivity() {
             revokePendingUriPermission()
             cleanupPendingRawFile()
             runOnUiThread {
-              val message =
-                  if (it is NotFoodException) {
-                    "No food detected in that image."
-                  } else {
-                    "Could not analyze captured photo."
-                  }
+              val message = userFacingFailureMessage(it)
               Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
               finish()
             }
@@ -203,6 +198,31 @@ class MealCaptureActivity : ComponentActivity() {
             Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_READ_URI_PERMISSION,
         )
       }
+    }
+  }
+
+  private fun userFacingFailureMessage(throwable: Throwable): String {
+    if (throwable is NotFoodException) {
+      return "No food detected in that image."
+    }
+
+    val message = throwable.message.orEmpty()
+    return when {
+      "quota" in message.lowercase() || "billing" in message.lowercase() ->
+          "OpenAI quota reached. Check billing."
+      "rate limit" in message.lowercase() ->
+          "OpenAI is rate-limiting requests. Try again."
+      "api key" in message.lowercase() || "unauthorized" in message.lowercase() ->
+          "API key issue. Revalidate it in the app."
+      "base64" in message.lowercase() || "image_url" in message.lowercase() ->
+          "Photo upload failed. Try taking the photo again."
+      "timeout" in message.lowercase() || "timed out" in message.lowercase() ->
+          "Analysis timed out. Try again."
+      "unable to resolve host" in message.lowercase() ||
+          "failed to connect" in message.lowercase() ||
+          "network" in message.lowercase() ->
+          "Network error while analyzing meal."
+      else -> "Could not analyze captured photo."
     }
   }
 
