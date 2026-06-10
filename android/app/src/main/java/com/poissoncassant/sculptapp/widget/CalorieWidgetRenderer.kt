@@ -40,7 +40,11 @@ object CalorieWidgetRenderer {
       )
       views.setTextViewText(
           R.id.widget_remaining_value,
-          context.getString(R.string.widget_remaining_format, state.caloriesRemaining),
+          if (state.caloriesRemaining < 0) {
+            context.getString(R.string.widget_remaining_over_format, state.caloriesRemaining)
+          } else {
+            context.getString(R.string.widget_remaining_format, state.caloriesRemaining)
+          },
       )
       views.setTextViewText(
           R.id.widget_remaining_meta,
@@ -126,6 +130,14 @@ object CalorieWidgetRenderer {
           ),
       )
       views.setOnClickPendingIntent(
+          R.id.widget_remaining_dead_zone,
+          buildBroadcastPendingIntent(
+              context,
+              REQUEST_NO_OP,
+              CalorieWidgetProvider.ACTION_NO_OP,
+          ),
+      )
+      views.setOnClickPendingIntent(
           R.id.widget_remaining_decrease_zone,
           buildBroadcastPendingIntent(
               context,
@@ -134,11 +146,27 @@ object CalorieWidgetRenderer {
           ),
       )
       views.setOnClickPendingIntent(
+          R.id.widget_center_dead_zone,
+          buildBroadcastPendingIntent(
+              context,
+              REQUEST_NO_OP,
+              CalorieWidgetProvider.ACTION_NO_OP,
+          ),
+      )
+      views.setOnClickPendingIntent(
           R.id.widget_last_meal_increase_zone,
           buildBroadcastPendingIntent(
               context,
               REQUEST_INCREASE_LAST_MEAL,
               CalorieWidgetProvider.ACTION_INCREASE_LAST_MEAL,
+          ),
+      )
+      views.setOnClickPendingIntent(
+          R.id.widget_last_meal_dead_zone,
+          buildBroadcastPendingIntent(
+              context,
+              REQUEST_NO_OP,
+              CalorieWidgetProvider.ACTION_NO_OP,
           ),
       )
       views.setOnClickPendingIntent(
