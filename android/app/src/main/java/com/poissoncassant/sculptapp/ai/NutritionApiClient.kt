@@ -83,6 +83,14 @@ class NutritionApiClient {
         Return one best estimate for the visible meal.
         Assume realistic portion depth and total volume even from a single angle.
         Estimate the full serving, not only the visible top surface.
+        The image is the primary source of truth.
+        Always analyze the image first and identify what is visibly present before using any spoken context.
+        Any user-provided spoken context is supplemental and must never override what is clearly visible in the image.
+        If spoken context conflicts with the image, trust the image and ignore the conflicting spoken detail.
+        If spoken context is consistent with the image, actively use it to refine the estimate.
+        Use spoken context to clarify ambiguous details such as portion amount, hidden ingredients, sauces, oils, packaging quantity, meal composition, or whether only part of the visible meal was eaten.
+        Example: if the image shows a burrito bowl and the user says it also has avocado and extra cheese, include that if it is plausible.
+        Example: if the image clearly shows a french tacos and the user says it is a banana, ignore that spoken conflict.
         Account for cooking oil, sauces, dressings, cheese, butter, and other hidden calories when visually plausible.
         When portion size is uncertain, avoid optimistic low estimates.
         For bowls, pasta dishes, rice dishes, mixed salads, and layered meals, assume the container or plate usually holds more food mass than the top view suggests.

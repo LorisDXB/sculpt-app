@@ -147,6 +147,9 @@ class MealCaptureActivity : ComponentActivity() {
 
     primaryButton.setOnClickListener {
       if (isReviewingCapture) {
+        if (isRecordingVoice || stopRequested) {
+          return@setOnClickListener
+        }
         persistCapturedImage()
       } else {
         takePhoto()
@@ -280,25 +283,30 @@ class MealCaptureActivity : ComponentActivity() {
   private fun syncUiState() {
     if (isReviewingCapture && !pendingPhotoPath.isNullOrBlank()) {
       capturedPreview.visibility = View.VISIBLE
-      statusText.text =
-          if (isRecordingVoice) {
-            getString(R.string.meal_capture_review_recording_hint)
-          } else {
-            getString(R.string.meal_capture_review_hint)
-          }
+      statusText.visibility = View.GONE
       primaryButton.setImageResource(R.drawable.ic_capture_check)
       primaryButton.contentDescription = getString(R.string.meal_capture_validate)
       microphoneButton.visibility = View.VISIBLE
+      val isAwaitingVoiceFinalization = isRecordingVoice || stopRequested
+      primaryButton.isEnabled = !isAwaitingVoiceFinalization
+      primaryButton.alpha = if (isAwaitingVoiceFinalization) 0.45f else 1f
+      microphoneButton.isEnabled = !stopRequested
+      microphoneButton.alpha = if (stopRequested) 0.55f else 1f
       updateTranscriptUi()
     } else {
       stopVoiceCapture()
       isReviewingCapture = false
       capturedPreview.setImageDrawable(null)
       capturedPreview.visibility = View.GONE
+      statusText.visibility = View.VISIBLE
       statusText.text = getString(R.string.meal_capture_live_hint)
       primaryButton.setImageResource(R.drawable.ic_capture_camera)
       primaryButton.contentDescription = getString(R.string.meal_capture_take_photo)
-      microphoneButton.visibility = View.GONE
+      primaryButton.isEnabled = true
+      primaryButton.alpha = 1f
+      microphoneButton.visibility = View.INVISIBLE
+      microphoneButton.isEnabled = true
+      microphoneButton.alpha = 1f
       transcriptText.visibility = View.GONE
     }
   }
@@ -343,7 +351,6 @@ class MealCaptureActivity : ComponentActivity() {
     stopRequested = false
     pendingVoiceTranscript = null
     Log.d(TAG, "Starting voice capture")
-    statusText.text = getString(R.string.meal_capture_review_recording_hint)
     transcriptText.visibility = View.VISIBLE
     transcriptText.text = getString(R.string.meal_capture_recording_hint)
 
@@ -361,6 +368,7 @@ class MealCaptureActivity : ComponentActivity() {
     runCatching { recognizer.startListening(recognizerIntent) }
         .onFailure {
           isRecordingVoice = false
+          stopRequested = false
           Log.e(TAG, "Unable to start voice recognition", it)
           Toast.makeText(this, getString(R.string.meal_capture_voice_error), Toast.LENGTH_SHORT).show()
           syncUiState()
@@ -376,7 +384,7 @@ class MealCaptureActivity : ComponentActivity() {
         TAG,
         "Stopping voice capture request ready=$speechReady speechHasBegun=$speechHasBegun partialPresent=${!pendingVoiceTranscript.isNullOrBlank()}",
     )
-    statusText.text = getString(R.string.meal_capture_review_processing_hint)
+    syncUiState()
     mainHandler.removeCallbacks(forceStopVoiceRunnable)
     if (speechHasBegun) {
       mainHandler.postDelayed(forceStopVoiceRunnable, 1600L)

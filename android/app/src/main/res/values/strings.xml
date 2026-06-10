@@ -30,9 +30,7 @@
     <string name="meal_capture_prepare_error">Unable to prepare camera capture.</string>
     <string name="meal_capture_open_error">Unable to open camera.</string>
     <string name="meal_capture_take_error">Could not take that photo. Try again.</string>
-    <string name="meal_capture_recording_hint">Hold the mic and speak your context.</string>
-    <string name="meal_capture_review_recording_hint">Recording... release to save your context.</string>
-    <string name="meal_capture_review_processing_hint">Finishing voice capture...</string>
+    <string name="meal_capture_recording_hint">You can now speak to give more context.</string>
     <string name="meal_capture_transcript_prefix">Context: %1$s</string>
     <string name="meal_capture_audio_permission_needed">Microphone permission is required for voice context.</string>
     <string name="meal_capture_audio_permission_denied">Microphone permission was denied.</string>

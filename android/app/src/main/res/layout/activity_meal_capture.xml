@@ -25,8 +25,10 @@
         android:id="@+id/camera_status_text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="top|center_horizontal"
-        android:layout_marginTop="28dp"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:layout_marginBottom="124dp"
         android:background="@drawable/capture_status_background"
         android:paddingStart="16dp"
         android:paddingTop="8dp"
@@ -34,7 +36,8 @@
         android:paddingBottom="8dp"
         android:text="@string/meal_capture_live_hint"
         android:textColor="#FFFFFFFF"
-        android:textSize="14sp" />
+        android:textSize="14sp"
+        android:visibility="gone" />
 
     <TextView
         android:id="@+id/camera_transcript_text"
@@ -83,6 +86,10 @@
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
+            <View
+                android:layout_width="72dp"
+                android:layout_height="1dp" />
+
             <ImageButton
                 android:id="@+id/camera_primary_button"
                 android:layout_width="72dp"
@@ -105,7 +112,7 @@
                 android:scaleType="centerInside"
                 android:src="@drawable/ic_capture_microphone"
                 android:tint="#FFFFFFFF"
-                android:visibility="gone" />
+                android:visibility="invisible" />
         </LinearLayout>
     </FrameLayout>
 
