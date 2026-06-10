@@ -3,6 +3,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
 
     <application
       android:name=".MainApplication"
@@ -65,6 +67,7 @@
           <action android:name="com.poissoncassant.sculptapp.widget.ACTION_DECREASE_LAST_MEAL" />
           <action android:name="com.poissoncassant.sculptapp.widget.ACTION_LOG_SAMPLE_MEAL" />
           <action android:name="com.poissoncassant.sculptapp.widget.ACTION_RESET_TODAY" />
+          <action android:name="com.poissoncassant.sculptapp.widget.ACTION_MIDNIGHT_REFRESH" />
         </intent-filter>
 
         <meta-data

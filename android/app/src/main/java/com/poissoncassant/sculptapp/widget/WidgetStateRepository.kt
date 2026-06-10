@@ -1,6 +1,7 @@
 package com.poissoncassant.sculptapp.widget
 
 import android.content.Context
+import android.util.Log
 import java.io.File
 import java.time.Instant
 import java.time.LocalDate
@@ -19,9 +20,11 @@ class WidgetStateRepository(context: Context) {
       storedDate == null -> {
         val initialState = defaultState(today)
         persistState(initialState)
+        Log.d(TAG, "Initialized widget state for date=$today")
         initialState
       }
       storedDate != today -> {
+        Log.d(TAG, "Date rollover detected storedDate=$storedDate newDate=$today, resetting daily state")
         val resetState =
             readPersistedState(storedDate).copy(
                 date = today,
@@ -358,6 +361,7 @@ class WidgetStateRepository(context: Context) {
 
     private const val DEFAULT_DAILY_TARGET = 2500
     private const val DEFAULT_ADJUSTMENT_STEP = 50
+    private const val TAG = "SculptWidgetState"
     private val ADJUSTMENT_STEPS = listOf(10, 50, 100, 250)
 
     private val SAMPLE_MEALS =

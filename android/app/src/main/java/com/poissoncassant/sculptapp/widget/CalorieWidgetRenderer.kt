@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.util.TypedValue
+import android.util.Log
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -25,6 +26,12 @@ object CalorieWidgetRenderer {
     val lastMeal = state.lastMeal
     val macroBottomPadding = dpToPx(context, 20)
     val statusBottomPadding = dpToPx(context, 12)
+
+    Log.d(
+        TAG,
+        "render widgetIds=${appWidgetIds.joinToString()} date=${state.date} consumed=${state.caloriesConsumedToday} target=${state.dailyCalorieTarget} status=${state.analysisStatus}",
+    )
+    WidgetRefreshScheduler.scheduleNextMidnightRefresh(context)
 
     appWidgetIds.forEach { appWidgetId ->
       val presentation = presentationFor(appWidgetManager.getAppWidgetOptions(appWidgetId))
@@ -258,6 +265,8 @@ object CalorieWidgetRenderer {
     views.setTextViewTextSize(R.id.widget_macro_value, TypedValue.COMPLEX_UNIT_SP, presentation.macroSp)
     views.setTextViewTextSize(R.id.widget_open_app_button, TypedValue.COMPLEX_UNIT_SP, presentation.buttonSp)
     views.setTextViewTextSize(R.id.widget_step_button, TypedValue.COMPLEX_UNIT_SP, presentation.buttonSp)
+    views.setInt(R.id.widget_last_meal_name, "setMaxLines", presentation.lastMealNameMaxLines)
+    views.setInt(R.id.widget_macro_value, "setMaxLines", presentation.lastMealMacroMaxLines)
 
     views.setViewPadding(
         R.id.widget_bottom_actions,
@@ -284,6 +293,10 @@ object CalorieWidgetRenderer {
     val macrosVisibility =
         if (presentation.showTotalMacros) android.view.View.VISIBLE else android.view.View.GONE
     views.setViewVisibility(R.id.widget_total_macro_value, macrosVisibility)
+    views.setViewVisibility(
+        R.id.widget_last_meal_label,
+        if (presentation.showLastMealLabel) android.view.View.VISIBLE else android.view.View.GONE,
+    )
   }
 
   private fun presentationFor(options: Bundle): WidgetPresentation {
@@ -302,28 +315,34 @@ object CalorieWidgetRenderer {
               mealValueSp = 23f,
               metaSp = 12f,
               macroSp = 12f,
+              lastMealNameMaxLines = 2,
+              lastMealMacroMaxLines = 2,
               buttonSp = 13f,
               buttonHorizontalPaddingDp = 12,
               buttonVerticalPaddingDp = 10,
               bottomActionsMarginTopDp = 12,
               showTotalMacros = true,
+              showLastMealLabel = true,
           )
       minHeightDp <= 125 || minWidthDp <= 250 ->
           WidgetPresentation(
-              contentHorizontalPaddingDp = 14,
-              contentVerticalPaddingDp = 14,
-              columnGapDp = 8,
-              contentBottomInsetDp = 18,
-              remainingValueSp = 23f,
-              mealNameSp = 13f,
-              mealValueSp = 17f,
-              metaSp = 11f,
-              macroSp = 10f,
+              contentHorizontalPaddingDp = 13,
+              contentVerticalPaddingDp = 13,
+              columnGapDp = 7,
+              contentBottomInsetDp = 14,
+              remainingValueSp = 20f,
+              mealNameSp = 10f,
+              mealValueSp = 12f,
+              metaSp = 10f,
+              macroSp = 9f,
+              lastMealNameMaxLines = 1,
+              lastMealMacroMaxLines = 1,
               buttonSp = 12f,
               buttonHorizontalPaddingDp = 10,
               buttonVerticalPaddingDp = 8,
               bottomActionsMarginTopDp = 8,
               showTotalMacros = false,
+              showLastMealLabel = false,
           )
       else ->
           WidgetPresentation(
@@ -336,11 +355,14 @@ object CalorieWidgetRenderer {
               mealValueSp = 22f,
               metaSp = 12f,
               macroSp = 12f,
+              lastMealNameMaxLines = 2,
+              lastMealMacroMaxLines = 2,
               buttonSp = 13f,
               buttonHorizontalPaddingDp = 12,
               buttonVerticalPaddingDp = 10,
               bottomActionsMarginTopDp = 12,
               showTotalMacros = true,
+              showLastMealLabel = true,
           )
     }
   }
@@ -410,13 +432,17 @@ object CalorieWidgetRenderer {
       val mealValueSp: Float,
       val metaSp: Float,
       val macroSp: Float,
+      val lastMealNameMaxLines: Int,
+      val lastMealMacroMaxLines: Int,
       val buttonSp: Float,
       val buttonHorizontalPaddingDp: Int,
       val buttonVerticalPaddingDp: Int,
       val bottomActionsMarginTopDp: Int,
       val showTotalMacros: Boolean,
+      val showLastMealLabel: Boolean,
   )
 
+  private const val TAG = "SculptWidgetRenderer"
   private const val REQUEST_OPEN_APP = 1001
   private const val REQUEST_CYCLE_STEP = 1002
   private const val REQUEST_INCREASE_REMAINING = 1003

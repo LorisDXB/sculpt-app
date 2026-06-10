@@ -4,6 +4,7 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 
 class CalorieWidgetProvider : AppWidgetProvider() {
   override fun onUpdate(
@@ -11,6 +12,7 @@ class CalorieWidgetProvider : AppWidgetProvider() {
       appWidgetManager: AppWidgetManager,
       appWidgetIds: IntArray,
   ) {
+    Log.d(TAG, "onUpdate for widgetIds=${appWidgetIds.joinToString()}")
     CalorieWidgetRenderer.render(context, appWidgetManager, appWidgetIds)
   }
 
@@ -21,17 +23,22 @@ class CalorieWidgetProvider : AppWidgetProvider() {
       newOptions: android.os.Bundle,
   ) {
     super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions)
+    Log.d(TAG, "onAppWidgetOptionsChanged for widgetId=$appWidgetId")
     CalorieWidgetRenderer.render(context, appWidgetManager, intArrayOf(appWidgetId))
   }
 
   override fun onReceive(context: Context, intent: Intent) {
     super.onReceive(context, intent)
+    Log.d(TAG, "onReceive action=${intent.action}")
 
     when (intent.action) {
       Intent.ACTION_DATE_CHANGED,
       Intent.ACTION_TIME_CHANGED,
       Intent.ACTION_TIMEZONE_CHANGED,
       Intent.ACTION_BOOT_COMPLETED -> {
+        CalorieWidgetRenderer.refreshAll(context)
+      }
+      ACTION_MIDNIGHT_REFRESH -> {
         CalorieWidgetRenderer.refreshAll(context)
       }
       ACTION_NO_OP -> Unit
@@ -83,5 +90,8 @@ class CalorieWidgetProvider : AppWidgetProvider() {
         "com.poissoncassant.sculptapp.widget.ACTION_LOG_SAMPLE_MEAL"
     const val ACTION_RESET_TODAY =
         "com.poissoncassant.sculptapp.widget.ACTION_RESET_TODAY"
+    const val ACTION_MIDNIGHT_REFRESH =
+        "com.poissoncassant.sculptapp.widget.ACTION_MIDNIGHT_REFRESH"
+    private const val TAG = "SculptWidgetProvider"
   }
 }

@@ -94,54 +94,62 @@
                     android:orientation="vertical"
                     android:paddingStart="10dp">
 
-                    <TextView
-                        android:id="@+id/widget_last_meal_label"
+                    <LinearLayout
+                        android:id="@+id/widget_last_meal_top_group"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginEnd="24dp"
-                        android:gravity="end"
-                        android:text="@string/widget_last_meal_label"
-                        android:textAllCaps="true"
-                        android:textColor="#99FFFFFF"
-                        android:textSize="12sp" />
+                        android:layout_height="0dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
 
-                    <TextView
-                        android:id="@+id/widget_last_meal_name"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
-                        android:autoSizeMaxTextSize="16sp"
-                        android:autoSizeMinTextSize="11sp"
-                        android:autoSizeStepGranularity="1sp"
-                        android:autoSizeTextType="uniform"
-                        android:ellipsize="end"
-                        android:gravity="end"
-                        android:maxLines="2"
-                        android:textColor="#FFFFFFFF"
-                        android:textSize="16sp"
-                        android:textStyle="bold" />
+                        <TextView
+                            android:id="@+id/widget_last_meal_label"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="24dp"
+                            android:gravity="end"
+                            android:text="@string/widget_last_meal_label"
+                            android:textAllCaps="true"
+                            android:textColor="#99FFFFFF"
+                            android:textSize="12sp" />
 
-                    <TextView
-                        android:id="@+id/widget_last_meal_value"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:autoSizeMaxTextSize="22sp"
-                        android:autoSizeMinTextSize="14sp"
-                        android:autoSizeStepGranularity="1sp"
-                        android:autoSizeTextType="uniform"
-                        android:gravity="end"
-                        android:includeFontPadding="false"
-                        android:maxLines="1"
-                        android:textColor="#FFFFFFFF"
-                        android:textSize="22sp"
-                        android:textStyle="bold" />
+                        <TextView
+                            android:id="@+id/widget_last_meal_name"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:autoSizeMaxTextSize="16sp"
+                            android:autoSizeMinTextSize="8sp"
+                            android:autoSizeStepGranularity="1sp"
+                            android:autoSizeTextType="uniform"
+                            android:ellipsize="end"
+                            android:gravity="end"
+                            android:maxLines="2"
+                            android:textColor="#FFFFFFFF"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/widget_last_meal_value"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:autoSizeMaxTextSize="22sp"
+                            android:autoSizeMinTextSize="10sp"
+                            android:autoSizeStepGranularity="1sp"
+                            android:autoSizeTextType="uniform"
+                            android:gravity="end"
+                            android:includeFontPadding="false"
+                            android:maxLines="1"
+                            android:textColor="#FFFFFFFF"
+                            android:textSize="22sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
 
                     <TextView
                         android:id="@+id/widget_macro_value"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
+                        android:layout_marginTop="6dp"
                         android:autoSizeMaxTextSize="12sp"
                         android:autoSizeMinTextSize="9sp"
                         android:autoSizeStepGranularity="1sp"
