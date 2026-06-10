@@ -18,4 +18,25 @@
     <string name="widget_analysis_busy_hint">Please wait...</string>
     <string name="widget_analysis_error_title">Last scan failed</string>
     <string name="widget_analysis_error_fallback">Try taking the photo again</string>
+    <string name="meal_capture_back">Go back</string>
+    <string name="meal_capture_take_photo">Take photo</string>
+    <string name="meal_capture_validate">Send meal</string>
+    <string name="meal_capture_microphone">Add voice context</string>
+    <string name="meal_capture_preview_content_description">Meal photo preview</string>
+    <string name="meal_capture_live_hint">Frame your meal, then take the shot.</string>
+    <string name="meal_capture_review_hint">Looks good? Send it, or go back to retake.</string>
+    <string name="meal_capture_permission_needed">Camera permission is required to scan meals.</string>
+    <string name="meal_capture_permission_denied">Camera permission was denied.</string>
+    <string name="meal_capture_prepare_error">Unable to prepare camera capture.</string>
+    <string name="meal_capture_open_error">Unable to open camera.</string>
+    <string name="meal_capture_take_error">Could not take that photo. Try again.</string>
+    <string name="meal_capture_recording_hint">Hold the mic and speak your context.</string>
+    <string name="meal_capture_review_recording_hint">Recording... release to save your context.</string>
+    <string name="meal_capture_review_processing_hint">Finishing voice capture...</string>
+    <string name="meal_capture_transcript_prefix">Context: %1$s</string>
+    <string name="meal_capture_audio_permission_needed">Microphone permission is required for voice context.</string>
+    <string name="meal_capture_audio_permission_denied">Microphone permission was denied.</string>
+    <string name="meal_capture_voice_unavailable">Voice recognition is not available on this device.</string>
+    <string name="meal_capture_voice_too_short">No voice context captured.</string>
+    <string name="meal_capture_voice_error">Could not capture voice context. Try again.</string>
 </resources>

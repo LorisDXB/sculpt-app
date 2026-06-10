@@ -20,6 +20,7 @@ class MealAnalysisWorker(
 ) : Worker(appContext, params) {
   override fun doWork(): Result {
     val rawPhotoPath = inputData.getString(KEY_RAW_PHOTO_PATH)
+    val mealContextTranscript = inputData.getString(KEY_MEAL_CONTEXT_TRANSCRIPT)?.trim().orEmpty()
     if (rawPhotoPath.isNullOrBlank()) {
       Log.e(TAG, "Missing raw photo path input")
       WidgetStateRepository(applicationContext).markAnalysisFailed("Could not analyze captured photo.")
@@ -46,7 +47,12 @@ class MealAnalysisWorker(
           Log.d(TAG, "Compressing raw photo at $rawPhotoPath")
           compressedFile = ImageCompressor.compressToJpeg(applicationContext, rawPhotoFile)
           Log.d(TAG, "Analyzing compressed image at ${compressedFile?.absolutePath}")
-          val estimate = NutritionApiClient().analyzeMealImage(apiKey, compressedFile!!)
+          val estimate =
+              NutritionApiClient().analyzeMealImage(
+                  apiKey = apiKey,
+                  imageFile = compressedFile!!,
+                  mealContextTranscript = mealContextTranscript.ifBlank { null },
+              )
 
           if (estimate.mealName.equals("not food", ignoreCase = true) || estimate.calories <= 0) {
             throw NotFoodException()
@@ -86,12 +92,18 @@ class MealAnalysisWorker(
   }
 
   companion object {
-    fun buildWorkRequest(rawPhotoPath: String) =
+    fun buildWorkRequest(rawPhotoPath: String, mealContextTranscript: String? = null) =
         OneTimeWorkRequestBuilder<MealAnalysisWorker>()
-            .setInputData(workDataOf(KEY_RAW_PHOTO_PATH to rawPhotoPath))
+            .setInputData(
+                workDataOf(
+                    KEY_RAW_PHOTO_PATH to rawPhotoPath,
+                    KEY_MEAL_CONTEXT_TRANSCRIPT to mealContextTranscript,
+                ),
+            )
             .build()
 
     private const val KEY_RAW_PHOTO_PATH = "raw_photo_path"
+    private const val KEY_MEAL_CONTEXT_TRANSCRIPT = "meal_context_transcript"
     private const val KEY_FAILURE_MESSAGE = "failure_message"
     private const val TAG = "SculptMealWorker"
   }

@@ -45,9 +45,13 @@ class NutritionApiClient {
         }
   }
 
-  fun analyzeMealImage(apiKey: String, imageFile: File): NutritionEstimate {
+  fun analyzeMealImage(
+      apiKey: String,
+      imageFile: File,
+      mealContextTranscript: String? = null,
+  ): NutritionEstimate {
     val connection = createConnection("$BASE_URL/responses", "POST", apiKey)
-    val requestBody = buildAnalysisRequestBody(imageFile)
+    val requestBody = buildAnalysisRequestBody(imageFile, mealContextTranscript)
 
     return runCatching {
           connection.outputStream.bufferedWriter().use { writer ->
@@ -70,7 +74,7 @@ class NutritionApiClient {
         }
   }
 
-  private fun buildAnalysisRequestBody(imageFile: File): JSONObject {
+  private fun buildAnalysisRequestBody(imageFile: File, mealContextTranscript: String?): JSONObject {
     val encodedImage =
         Base64.encodeToString(imageFile.readBytes(), Base64.NO_WRAP)
     val prompt =
@@ -116,6 +120,23 @@ class NutritionApiClient {
     val userContent =
         JSONArray()
             .put(JSONObject().put("type", "input_text").put("text", prompt))
+            .apply {
+              mealContextTranscript
+                  ?.takeIf { it.isNotBlank() }
+                  ?.let { transcript ->
+                    put(
+                        JSONObject()
+                            .put(
+                                "type",
+                                "input_text",
+                            )
+                            .put(
+                                "text",
+                                "User provided extra meal context: $transcript",
+                            ),
+                    )
+                  }
+            }
             .put(
                 JSONObject()
                     .put("type", "input_image")
