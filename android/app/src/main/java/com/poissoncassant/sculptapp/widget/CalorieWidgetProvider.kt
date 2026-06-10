@@ -14,6 +14,16 @@ class CalorieWidgetProvider : AppWidgetProvider() {
     CalorieWidgetRenderer.render(context, appWidgetManager, appWidgetIds)
   }
 
+  override fun onAppWidgetOptionsChanged(
+      context: Context,
+      appWidgetManager: AppWidgetManager,
+      appWidgetId: Int,
+      newOptions: android.os.Bundle,
+  ) {
+    super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions)
+    CalorieWidgetRenderer.render(context, appWidgetManager, intArrayOf(appWidgetId))
+  }
+
   override fun onReceive(context: Context, intent: Intent) {
     super.onReceive(context, intent)
 

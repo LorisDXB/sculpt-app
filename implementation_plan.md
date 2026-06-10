@@ -42,7 +42,7 @@ Notes:
 - The raw plan says "redirect back to the home screen immediately." In this codebase, that effectively means "finish the native capture activity immediately and let the user land back on launcher/home while the widget updates."
 - A true spinner inside an Android home-screen widget is limited. We should plan for the best RemoteViews-friendly version: progress indicator if supported by target API, otherwise animated-feeling static loading state copy and layout.
 
-### C2. Safer tap zones for calorie adjustment
+### C2. Safer tap zones for calorie adjustment DONE
 
 Goal: change the 50/50 split to 40/20/40, with a dead zone in the middle.
 
@@ -57,7 +57,7 @@ Likely files:
 - [calorie_widget.xml](/mnt/c/Users/gdedx/Delivery/PoissonCassant/sculpt-app/android/app/src/main/res/layout/calorie_widget.xml:124)
 - [CalorieWidgetRenderer.kt](/mnt/c/Users/gdedx/Delivery/PoissonCassant/sculpt-app/android/app/src/main/java/com/poissoncassant/sculptapp/widget/CalorieWidgetRenderer.kt:119)
 
-### C3. Prevent macro/button overlap
+### C3. Prevent macro/button overlap DONE
 
 Goal: keep large calorie and macro text readable without colliding with the bottom controls.
 
@@ -72,7 +72,7 @@ Likely files:
 - [calorie_widget.xml](/mnt/c/Users/gdedx/Delivery/PoissonCassant/sculpt-app/android/app/src/main/res/layout/calorie_widget.xml:76)
 - [CalorieWidgetRenderer.kt](/mnt/c/Users/gdedx/Delivery/PoissonCassant/sculpt-app/android/app/src/main/java/com/poissoncassant/sculptapp/widget/CalorieWidgetRenderer.kt:90)
 
-### C4. Make the widget responsive across supported sizes
+### C4. Make the widget responsive across supported sizes DONE
 
 Goal: improve rendering for `4x2`, `4x3`, and larger sizes without clipping or awkward spacing.
 

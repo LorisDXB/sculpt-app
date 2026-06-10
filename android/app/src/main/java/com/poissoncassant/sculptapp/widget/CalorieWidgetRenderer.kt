@@ -5,6 +5,8 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.os.Bundle
+import android.util.TypedValue
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -25,6 +27,7 @@ object CalorieWidgetRenderer {
     val statusBottomPadding = dpToPx(context, 12)
 
     appWidgetIds.forEach { appWidgetId ->
+      val presentation = presentationFor(appWidgetManager.getAppWidgetOptions(appWidgetId))
       val views = RemoteViews(context.packageName, R.layout.calorie_widget)
       views.setOnClickPendingIntent(
           R.id.widget_root_container,
@@ -38,13 +41,10 @@ object CalorieWidgetRenderer {
           R.id.widget_background_image,
           createBackgroundBitmap(state),
       )
+      applyPresentation(context, views, presentation)
       views.setTextViewText(
           R.id.widget_remaining_value,
-          if (state.caloriesRemaining < 0) {
-            context.getString(R.string.widget_remaining_over_format, state.caloriesRemaining)
-          } else {
-            context.getString(R.string.widget_remaining_format, state.caloriesRemaining)
-          },
+          context.getString(R.string.widget_remaining_format, state.caloriesRemaining),
       )
       views.setTextViewText(
           R.id.widget_remaining_meta,
@@ -223,6 +223,128 @@ object CalorieWidgetRenderer {
     )
   }
 
+  private fun applyPresentation(
+      context: Context,
+      views: RemoteViews,
+      presentation: WidgetPresentation,
+  ) {
+    views.setViewPadding(
+        R.id.widget_content_root,
+        dpToPx(context, presentation.contentHorizontalPaddingDp),
+        dpToPx(context, presentation.contentVerticalPaddingDp),
+        dpToPx(context, presentation.contentHorizontalPaddingDp),
+        dpToPx(context, presentation.contentVerticalPaddingDp),
+    )
+    views.setViewPadding(
+        R.id.widget_left_column,
+        0,
+        0,
+        dpToPx(context, presentation.columnGapDp),
+        dpToPx(context, presentation.contentBottomInsetDp),
+    )
+    views.setViewPadding(
+        R.id.widget_right_column,
+        dpToPx(context, presentation.columnGapDp),
+        0,
+        0,
+        dpToPx(context, presentation.contentBottomInsetDp),
+    )
+
+    views.setTextViewTextSize(R.id.widget_remaining_value, TypedValue.COMPLEX_UNIT_SP, presentation.remainingValueSp)
+    views.setTextViewTextSize(R.id.widget_remaining_meta, TypedValue.COMPLEX_UNIT_SP, presentation.metaSp)
+    views.setTextViewTextSize(R.id.widget_total_macro_value, TypedValue.COMPLEX_UNIT_SP, presentation.macroSp)
+    views.setTextViewTextSize(R.id.widget_last_meal_name, TypedValue.COMPLEX_UNIT_SP, presentation.mealNameSp)
+    views.setTextViewTextSize(R.id.widget_last_meal_value, TypedValue.COMPLEX_UNIT_SP, presentation.mealValueSp)
+    views.setTextViewTextSize(R.id.widget_macro_value, TypedValue.COMPLEX_UNIT_SP, presentation.macroSp)
+    views.setTextViewTextSize(R.id.widget_open_app_button, TypedValue.COMPLEX_UNIT_SP, presentation.buttonSp)
+    views.setTextViewTextSize(R.id.widget_step_button, TypedValue.COMPLEX_UNIT_SP, presentation.buttonSp)
+
+    views.setViewPadding(
+        R.id.widget_bottom_actions,
+        0,
+        dpToPx(context, presentation.bottomActionsMarginTopDp),
+        0,
+        0,
+    )
+    views.setViewPadding(
+        R.id.widget_open_app_button,
+        dpToPx(context, presentation.buttonHorizontalPaddingDp),
+        dpToPx(context, presentation.buttonVerticalPaddingDp),
+        dpToPx(context, presentation.buttonHorizontalPaddingDp),
+        dpToPx(context, presentation.buttonVerticalPaddingDp),
+    )
+    views.setViewPadding(
+        R.id.widget_step_button,
+        dpToPx(context, presentation.buttonHorizontalPaddingDp),
+        dpToPx(context, presentation.buttonVerticalPaddingDp),
+        dpToPx(context, presentation.buttonHorizontalPaddingDp),
+        dpToPx(context, presentation.buttonVerticalPaddingDp),
+    )
+
+    val macrosVisibility =
+        if (presentation.showTotalMacros) android.view.View.VISIBLE else android.view.View.GONE
+    views.setViewVisibility(R.id.widget_total_macro_value, macrosVisibility)
+  }
+
+  private fun presentationFor(options: Bundle): WidgetPresentation {
+    val minWidthDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 250)
+    val minHeightDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 110)
+
+    return when {
+      minHeightDp >= 170 || minWidthDp >= 330 ->
+          WidgetPresentation(
+              contentHorizontalPaddingDp = 18,
+              contentVerticalPaddingDp = 18,
+              columnGapDp = 12,
+              contentBottomInsetDp = 24,
+              remainingValueSp = 31f,
+              mealNameSp = 17f,
+              mealValueSp = 23f,
+              metaSp = 12f,
+              macroSp = 12f,
+              buttonSp = 13f,
+              buttonHorizontalPaddingDp = 12,
+              buttonVerticalPaddingDp = 10,
+              bottomActionsMarginTopDp = 12,
+              showTotalMacros = true,
+          )
+      minHeightDp <= 125 || minWidthDp <= 250 ->
+          WidgetPresentation(
+              contentHorizontalPaddingDp = 14,
+              contentVerticalPaddingDp = 14,
+              columnGapDp = 8,
+              contentBottomInsetDp = 18,
+              remainingValueSp = 23f,
+              mealNameSp = 13f,
+              mealValueSp = 17f,
+              metaSp = 11f,
+              macroSp = 10f,
+              buttonSp = 12f,
+              buttonHorizontalPaddingDp = 10,
+              buttonVerticalPaddingDp = 8,
+              bottomActionsMarginTopDp = 8,
+              showTotalMacros = false,
+          )
+      else ->
+          WidgetPresentation(
+              contentHorizontalPaddingDp = 16,
+              contentVerticalPaddingDp = 16,
+              columnGapDp = 10,
+              contentBottomInsetDp = 20,
+              remainingValueSp = 28f,
+              mealNameSp = 16f,
+              mealValueSp = 22f,
+              metaSp = 12f,
+              macroSp = 12f,
+              buttonSp = 13f,
+              buttonHorizontalPaddingDp = 12,
+              buttonVerticalPaddingDp = 10,
+              bottomActionsMarginTopDp = 12,
+              showTotalMacros = true,
+          )
+    }
+  }
+
   private fun createBackgroundBitmap(state: CalorieWidgetState): Bitmap {
     val width = 900
     val height = 420
@@ -277,6 +399,23 @@ object CalorieWidgetRenderer {
 
   private fun dpToPx(context: Context, dp: Int): Int =
       (dp * context.resources.displayMetrics.density).toInt()
+
+  private data class WidgetPresentation(
+      val contentHorizontalPaddingDp: Int,
+      val contentVerticalPaddingDp: Int,
+      val columnGapDp: Int,
+      val contentBottomInsetDp: Int,
+      val remainingValueSp: Float,
+      val mealNameSp: Float,
+      val mealValueSp: Float,
+      val metaSp: Float,
+      val macroSp: Float,
+      val buttonSp: Float,
+      val buttonHorizontalPaddingDp: Int,
+      val buttonVerticalPaddingDp: Int,
+      val bottomActionsMarginTopDp: Int,
+      val showTotalMacros: Boolean,
+  )
 
   private const val REQUEST_OPEN_APP = 1001
   private const val REQUEST_CYCLE_STEP = 1002
