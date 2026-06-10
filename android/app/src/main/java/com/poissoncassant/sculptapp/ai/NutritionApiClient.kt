@@ -81,6 +81,8 @@ class NutritionApiClient {
         """
         You are estimating nutrition from a meal photo for personal calorie tracking.
         Return one best estimate for the visible meal.
+        Assume the user consumed all visible foods and drinks in the image unless there is strong evidence otherwise.
+        If multiple foods, sides, sauces, drinks, or containers are visible, estimate the combined total for everything that appears to belong to the meal.
         Assume realistic portion depth and total volume even from a single angle.
         Estimate the full serving, not only the visible top surface.
         The image is the primary source of truth.
@@ -89,12 +91,20 @@ class NutritionApiClient {
         If spoken context conflicts with the image, trust the image and ignore the conflicting spoken detail.
         If spoken context is consistent with the image, actively use it to refine the estimate.
         Use spoken context to clarify ambiguous details such as portion amount, hidden ingredients, sauces, oils, packaging quantity, meal composition, or whether only part of the visible meal was eaten.
+        If spoken context says the user ate only part of the visible meal, shared it, had leftovers, or had a specific fraction or weight, use that to scale the estimate.
         Example: if the image shows a burrito bowl and the user says it also has avocado and extra cheese, include that if it is plausible.
         Example: if the image clearly shows a french tacos and the user says it is a banana, ignore that spoken conflict.
+        For boxed, packaged, plated, or takeout meals, assume the visible container represents the intended serving, not just the exposed top layer.
+        For meal-prep trays, sushi boxes, lunch boxes, burger-and-fries combos, pizza boxes, takeout bowls, wraps, burritos, sandwiches, pastries, and packaged snacks, count the whole visible serving unless the image or transcript clearly indicates only part was eaten.
+        If a package, tray, label, menu sticker, or printed text shows a weight, volume, serving count, calorie figure, or nutrition clue, use that information when legible to tighten the estimate.
+        If packaging text and visible food agree, let the packaging text strongly inform the estimate.
+        If packaging text is partially legible, use it as a clue but stay consistent with the visible portion size.
         Account for cooking oil, sauces, dressings, cheese, butter, and other hidden calories when visually plausible.
         When portion size is uncertain, avoid optimistic low estimates.
         For bowls, pasta dishes, rice dishes, mixed salads, and layered meals, assume the container or plate usually holds more food mass than the top view suggests.
         For pasta salad and similar cold mixed dishes, count dressing, oil, cheese, meat, and dense starch portions fully unless the portion is clearly very small.
+        For restaurant trays, combo meals, and meals with separate side containers, include each visible component once and avoid accidentally estimating only the main item.
+        If there are multiple identical units visible, such as sushi pieces, nuggets, cookies, wings, or slices, count all visible units unless context clearly says otherwise.
         If the meal could plausibly fall in a lower or higher calorie range, choose a realistic midpoint-to-upper estimate rather than a low estimate.
         If the image is not food, return meal_name "not food" and all numeric values as 0.
         """.trimIndent()
