@@ -19,7 +19,7 @@ The raw plan is plausible overall, but it needs a few adjustments to match the c
 
 ## Milestone C
 
-### C1. Immediate return after capture with visible widget loading state
+### C1. Immediate return after capture with visible widget loading state DONE
 
 Goal: keep the existing widget `ANALYZING` state, but stop making the user wait inside `MealCaptureActivity`.
 
@@ -89,7 +89,7 @@ Likely files:
 - [calorie_widget.xml](/mnt/c/Users/gdedx/Delivery/PoissonCassant/sculpt-app/android/app/src/main/res/layout/calorie_widget.xml:1)
 - [calorie_widget_info.xml](/mnt/c/Users/gdedx/Delivery/PoissonCassant/sculpt-app/android/app/src/main/res/xml/calorie_widget_info.xml:1)
 
-### C5. Reliable refresh after midnight
+### C5. Reliable refresh after midnight DONE
 
 Goal: preserve the existing reset-on-read behavior, but ensure the widget visibly refreshes soon after date rollover.
 

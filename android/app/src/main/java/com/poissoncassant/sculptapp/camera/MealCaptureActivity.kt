@@ -9,15 +9,13 @@ import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Log
 import android.widget.Toast
+import androidx.work.WorkManager
 import androidx.activity.ComponentActivity
 import androidx.core.content.FileProvider
-import com.poissoncassant.sculptapp.ai.NutritionApiClient
-import com.poissoncassant.sculptapp.config.AppConfigRepository
 import com.poissoncassant.sculptapp.widget.CalorieWidgetRenderer
 import com.poissoncassant.sculptapp.widget.WidgetStateRepository
 import java.io.File
 import java.io.IOException
-import java.time.Instant
 
 class MealCaptureActivity : ComponentActivity() {
   private var pendingPhotoPath: String? = null
@@ -111,74 +109,23 @@ class MealCaptureActivity : ComponentActivity() {
   }
 
   private fun persistCapturedImage() {
-    val sourceUri = pendingPhotoUri
-    if (sourceUri == null) {
-      Log.e(TAG, "Persist requested with null pendingPhotoUri")
+    val rawPhotoPath = pendingPhotoPath
+    if (rawPhotoPath.isNullOrBlank()) {
+      Log.e(TAG, "Persist requested with null pendingPhotoPath")
       finish()
       return
     }
 
     WidgetStateRepository(this).markAnalysisStarted()
     CalorieWidgetRenderer.refreshAll(this)
-
-    Thread {
-      runCatching {
-            val apiKey = AppConfigRepository(this).getApiKey()
-            if (apiKey.isNullOrBlank()) {
-              throw IOException("No validated API key available")
-            }
-
-            Log.d(TAG, "Compressing captured image from $sourceUri")
-            val compressedFile = ImageCompressor.compressToJpeg(this, sourceUri)
-            Log.d(TAG, "Analyzing compressed image at ${compressedFile.absolutePath}")
-            val estimate = NutritionApiClient().analyzeMealImage(apiKey, compressedFile)
-
-            if (estimate.mealName.equals("not food", ignoreCase = true) || estimate.calories <= 0) {
-              throw NotFoodException()
-            }
-
-            WidgetStateRepository(this).saveCapturedImage(
-                rawImagePath = pendingPhotoPath,
-                compressedImagePath = compressedFile.absolutePath,
-                capturedAt = Instant.now().toString(),
-            )
-            WidgetStateRepository(this).logAnalyzedMeal(
-                mealName = estimate.mealName,
-                calories = estimate.calories,
-                proteinGrams = estimate.proteinGrams,
-                carbsGrams = estimate.carbsGrams,
-                fatGrams = estimate.fatGrams,
-                timestamp = Instant.now().toString(),
-            )
-            CalorieWidgetRenderer.refreshAll(this)
-            Log.d(TAG, "Compressed image saved to ${compressedFile.absolutePath}")
-            compressedFile
-          }
-          .onSuccess {
-            runOnUiThread {
-              revokePendingUriPermission()
-              cleanupPendingRawFile()
-              Toast.makeText(this, "Meal analyzed and added.", Toast.LENGTH_SHORT).show()
-              finish()
-            }
-          }
-          .onFailure {
-            Log.e(TAG, "Could not process captured photo", it)
-            revokePendingUriPermission()
-            cleanupPendingRawFile()
-            runOnUiThread {
-              val message = userFacingFailureMessage(it)
-              if (shouldRenderFailureOnWidget(message)) {
-                WidgetStateRepository(this).markAnalysisFailed(message)
-              } else {
-                WidgetStateRepository(this).clearAnalysisFeedback()
-              }
-              CalorieWidgetRenderer.refreshAll(this)
-              Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-              finish()
-            }
-          }
-    }.start()
+    WorkManager.getInstance(applicationContext).enqueue(
+        MealAnalysisWorker.buildWorkRequest(rawPhotoPath),
+    )
+    Log.d(TAG, "Enqueued background meal analysis for $rawPhotoPath")
+    revokePendingUriPermission()
+    pendingPhotoUri = null
+    pendingPhotoPath = null
+    finish()
   }
 
   private fun createRawCaptureFile(): File? =
@@ -210,35 +157,6 @@ class MealCaptureActivity : ComponentActivity() {
       }
     }
   }
-
-  private fun userFacingFailureMessage(throwable: Throwable): String {
-    if (throwable is NotFoodException) {
-      return "No food detected in that image."
-    }
-
-    val message = throwable.message.orEmpty()
-    return when {
-      "quota" in message.lowercase() || "billing" in message.lowercase() ->
-          "OpenAI quota reached. Check billing."
-      "rate limit" in message.lowercase() ->
-          "OpenAI is rate-limiting requests. Try again."
-      "api key" in message.lowercase() || "unauthorized" in message.lowercase() ->
-          "API key issue. Revalidate it in the app."
-      "base64" in message.lowercase() || "image_url" in message.lowercase() ->
-          "Photo upload failed. Try taking the photo again."
-      "timeout" in message.lowercase() || "timed out" in message.lowercase() ->
-          "Analysis timed out. Try again."
-      "unable to resolve host" in message.lowercase() ||
-          "failed to connect" in message.lowercase() ||
-          "network" in message.lowercase() ->
-          "Network error while analyzing meal."
-      else -> "Could not analyze captured photo."
-    }
-  }
-
-  private fun shouldRenderFailureOnWidget(message: String): Boolean =
-      message != "No food detected in that image."
-
   companion object {
     private const val TAG = "SculptCapture"
     private const val REQUEST_CAPTURE_IMAGE = 1401
@@ -246,5 +164,4 @@ class MealCaptureActivity : ComponentActivity() {
     private const val STATE_PENDING_PHOTO_URI = "pending_photo_uri"
   }
 
-  private class NotFoodException : IOException("Model did not detect a meal")
 }

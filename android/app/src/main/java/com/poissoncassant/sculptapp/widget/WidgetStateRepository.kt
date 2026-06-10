@@ -143,6 +143,7 @@ class WidgetStateRepository(context: Context) {
 
   fun markAnalysisStarted() {
     val current = readState()
+    Log.d(TAG, "markAnalysisStarted date=${current.date} hasLastMeal=${current.lastMeal != null}")
     persistState(
         current.copy(
             analysisStatus = AnalysisStatus.ANALYZING,
@@ -153,6 +154,7 @@ class WidgetStateRepository(context: Context) {
 
   fun markAnalysisFailed(message: String) {
     val current = readState()
+    Log.d(TAG, "markAnalysisFailed date=${current.date} message=$message")
     persistState(
         current.copy(
             analysisStatus = AnalysisStatus.ERROR,
@@ -163,6 +165,7 @@ class WidgetStateRepository(context: Context) {
 
   fun clearAnalysisFeedback() {
     val current = readState()
+    Log.d(TAG, "clearAnalysisFeedback date=${current.date}")
     persistState(
         current.copy(
             analysisStatus = AnalysisStatus.IDLE,
@@ -180,6 +183,7 @@ class WidgetStateRepository(context: Context) {
       timestamp: String,
   ) {
     val current = readState()
+    Log.d(TAG, "logAnalyzedMeal name=$mealName calories=$calories")
     val sanitizedCalories = calories.coerceAtLeast(0)
     val nextMeal =
         LastMealState(

@@ -22,6 +22,22 @@ import kotlin.math.max
 
 object CalorieWidgetRenderer {
   fun render(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
+    render(context, appWidgetManager, appWidgetIds, usePartialUpdate = false)
+  }
+
+  fun refreshAll(context: Context, usePartialUpdate: Boolean = true) {
+    val appWidgetManager = AppWidgetManager.getInstance(context)
+    val widgetComponent = ComponentName(context, CalorieWidgetProvider::class.java)
+    val appWidgetIds = appWidgetManager.getAppWidgetIds(widgetComponent)
+    render(context, appWidgetManager, appWidgetIds, usePartialUpdate = usePartialUpdate)
+  }
+
+  private fun render(
+      context: Context,
+      appWidgetManager: AppWidgetManager,
+      appWidgetIds: IntArray,
+      usePartialUpdate: Boolean,
+  ) {
     val state = WidgetStateRepository(context).readState()
     val lastMeal = state.lastMeal
     val macroBottomPadding = dpToPx(context, 20)
@@ -29,7 +45,7 @@ object CalorieWidgetRenderer {
 
     Log.d(
         TAG,
-        "render widgetIds=${appWidgetIds.joinToString()} date=${state.date} consumed=${state.caloriesConsumedToday} target=${state.dailyCalorieTarget} status=${state.analysisStatus}",
+        "render widgetIds=${appWidgetIds.joinToString()} date=${state.date} consumed=${state.caloriesConsumedToday} target=${state.dailyCalorieTarget} status=${state.analysisStatus} partial=$usePartialUpdate",
     )
     WidgetRefreshScheduler.scheduleNextMidnightRefresh(context)
 
@@ -44,11 +60,13 @@ object CalorieWidgetRenderer {
               CalorieWidgetProvider.ACTION_NO_OP,
           ),
       )
-      views.setImageViewBitmap(
-          R.id.widget_background_image,
-          createBackgroundBitmap(state),
-      )
-      applyPresentation(context, views, presentation)
+      if (!usePartialUpdate) {
+        views.setImageViewBitmap(
+            R.id.widget_background_image,
+            createBackgroundBitmap(state),
+        )
+        applyPresentation(context, views, presentation)
+      }
       views.setTextViewText(
           R.id.widget_remaining_value,
           context.getString(R.string.widget_remaining_format, state.caloriesRemaining),
@@ -83,8 +101,9 @@ object CalorieWidgetRenderer {
         views.setViewVisibility(R.id.widget_last_meal_label, android.view.View.VISIBLE)
         views.setTextViewText(R.id.widget_last_meal_name, context.getString(R.string.widget_analysis_in_progress))
         views.setTextViewText(R.id.widget_last_meal_value, "")
-        views.setTextViewText(R.id.widget_macro_value, context.getString(R.string.widget_analysis_busy_hint))
+        views.setTextViewText(R.id.widget_macro_value, "")
         views.setViewPadding(R.id.widget_macro_value, 0, 8, 0, statusBottomPadding)
+        views.setViewVisibility(R.id.widget_analysis_progress, android.view.View.VISIBLE)
         views.setViewVisibility(R.id.widget_last_meal_increase_zone, android.view.View.VISIBLE)
         views.setViewVisibility(R.id.widget_last_meal_decrease_zone, android.view.View.VISIBLE)
       } else if (state.analysisStatus == AnalysisStatus.ERROR) {
@@ -96,6 +115,7 @@ object CalorieWidgetRenderer {
             state.analysisMessage ?: context.getString(R.string.widget_analysis_error_fallback),
         )
         views.setViewPadding(R.id.widget_macro_value, 0, 8, 0, statusBottomPadding)
+        views.setViewVisibility(R.id.widget_analysis_progress, android.view.View.GONE)
         views.setViewVisibility(R.id.widget_last_meal_increase_zone, android.view.View.VISIBLE)
         views.setViewVisibility(R.id.widget_last_meal_decrease_zone, android.view.View.VISIBLE)
       } else if (lastMeal == null) {
@@ -104,6 +124,7 @@ object CalorieWidgetRenderer {
         views.setTextViewText(R.id.widget_last_meal_value, "")
         views.setTextViewText(R.id.widget_macro_value, "")
         views.setViewPadding(R.id.widget_macro_value, 0, 8, 0, macroBottomPadding)
+        views.setViewVisibility(R.id.widget_analysis_progress, android.view.View.GONE)
         views.setViewVisibility(R.id.widget_last_meal_increase_zone, android.view.View.INVISIBLE)
         views.setViewVisibility(R.id.widget_last_meal_decrease_zone, android.view.View.INVISIBLE)
       } else {
@@ -123,6 +144,7 @@ object CalorieWidgetRenderer {
             ),
         )
         views.setViewPadding(R.id.widget_macro_value, 0, 8, 0, 0)
+        views.setViewVisibility(R.id.widget_analysis_progress, android.view.View.GONE)
         views.setViewVisibility(R.id.widget_last_meal_increase_zone, android.view.View.VISIBLE)
         views.setViewVisibility(R.id.widget_last_meal_decrease_zone, android.view.View.VISIBLE)
       }
@@ -192,15 +214,12 @@ object CalorieWidgetRenderer {
               CalorieWidgetProvider.ACTION_CYCLE_STEP,
           ),
       )
-      appWidgetManager.updateAppWidget(appWidgetId, views)
+      if (usePartialUpdate) {
+        appWidgetManager.partiallyUpdateAppWidget(appWidgetId, views)
+      } else {
+        appWidgetManager.updateAppWidget(appWidgetId, views)
+      }
     }
-  }
-
-  fun refreshAll(context: Context) {
-    val appWidgetManager = AppWidgetManager.getInstance(context)
-    val widgetComponent = ComponentName(context, CalorieWidgetProvider::class.java)
-    val appWidgetIds = appWidgetManager.getAppWidgetIds(widgetComponent)
-    render(context, appWidgetManager, appWidgetIds)
   }
 
   private fun buildOpenAppPendingIntent(context: Context): PendingIntent {

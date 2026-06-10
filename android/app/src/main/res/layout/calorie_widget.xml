@@ -97,8 +97,7 @@
                     <LinearLayout
                         android:id="@+id/widget_last_meal_top_group"
                         android:layout_width="match_parent"
-                        android:layout_height="0dp"
-                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
                         android:orientation="vertical">
 
                         <TextView
@@ -145,20 +144,38 @@
                             android:textStyle="bold" />
                     </LinearLayout>
 
-                    <TextView
-                        android:id="@+id/widget_macro_value"
+                    <FrameLayout
+                        android:id="@+id/widget_last_meal_status_container"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
-                        android:autoSizeMaxTextSize="12sp"
-                        android:autoSizeMinTextSize="9sp"
-                        android:autoSizeStepGranularity="1sp"
-                        android:autoSizeTextType="uniform"
-                        android:ellipsize="end"
-                        android:gravity="end"
-                        android:maxLines="2"
-                        android:textColor="#D9FFFFFF"
-                        android:textSize="12sp" />
+                        android:layout_height="0dp"
+                        android:layout_weight="1">
+
+                        <TextView
+                            android:id="@+id/widget_macro_value"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="top"
+                            android:layout_marginTop="6dp"
+                            android:autoSizeMaxTextSize="12sp"
+                            android:autoSizeMinTextSize="9sp"
+                            android:autoSizeStepGranularity="1sp"
+                            android:autoSizeTextType="uniform"
+                            android:ellipsize="end"
+                            android:gravity="end"
+                            android:maxLines="2"
+                            android:textColor="#D9FFFFFF"
+                            android:textSize="12sp" />
+
+                        <ProgressBar
+                            android:id="@+id/widget_analysis_progress"
+                            style="?android:attr/progressBarStyleSmall"
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:layout_gravity="center_vertical|end"
+                            android:indeterminate="true"
+                            android:indeterminateTint="#FFFFFFFF"
+                            android:visibility="gone" />
+                    </FrameLayout>
                 </LinearLayout>
             </LinearLayout>
 

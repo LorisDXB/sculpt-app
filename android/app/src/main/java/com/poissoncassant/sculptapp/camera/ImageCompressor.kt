@@ -12,6 +12,15 @@ import kotlin.math.max
 object ImageCompressor {
   fun compressToJpeg(context: Context, sourceUri: Uri): File {
     val bitmap = decodeScaledBitmap(context, sourceUri)
+    return writeCompressedBitmap(context, bitmap)
+  }
+
+  fun compressToJpeg(context: Context, sourceFile: File): File {
+    val bitmap = decodeScaledBitmap(sourceFile)
+    return writeCompressedBitmap(context, bitmap)
+  }
+
+  private fun writeCompressedBitmap(context: Context, bitmap: Bitmap): File {
     val outputFile =
         File.createTempFile(
             "meal-compressed-",
@@ -43,6 +52,20 @@ object ImageCompressor {
     return context.contentResolver.openInputStream(sourceUri).use { stream ->
       BitmapFactory.decodeStream(stream, null, options)
     } ?: throw IOException("Unable to decode captured image")
+  }
+
+  private fun decodeScaledBitmap(sourceFile: File): Bitmap {
+    val options =
+        BitmapFactory.Options().apply {
+          inJustDecodeBounds = true
+          BitmapFactory.decodeFile(sourceFile.absolutePath, this)
+        }
+
+    options.inSampleSize = calculateSampleSize(options.outWidth, options.outHeight, 1600)
+    options.inJustDecodeBounds = false
+
+    return BitmapFactory.decodeFile(sourceFile.absolutePath, options)
+        ?: throw IOException("Unable to decode captured image")
   }
 
   private fun calculateSampleSize(width: Int, height: Int, maxDimension: Int): Int {
