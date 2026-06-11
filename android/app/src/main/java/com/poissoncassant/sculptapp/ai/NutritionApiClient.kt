@@ -1,5 +1,6 @@
 package com.poissoncassant.sculptapp.ai
 
+import android.util.Log
 import android.util.Base64
 import org.json.JSONArray
 import org.json.JSONObject
@@ -15,6 +16,7 @@ class NutritionApiClient {
     val connection = createConnection("$BASE_URL/models", "GET", apiKey)
 
     return runCatching {
+          Log.d(TAG, "Validating API key against $BASE_URL/models")
           connection.connect()
           when (val statusCode = connection.responseCode) {
             HttpURLConnection.HTTP_OK -> {
@@ -54,22 +56,33 @@ class NutritionApiClient {
     val requestBody = buildAnalysisRequestBody(imageFile, mealContextTranscript)
 
     return runCatching {
+          Log.d(
+              TAG,
+              "Sending meal analysis request imagePath=${imageFile.absolutePath} imageBytes=${imageFile.length()} transcriptPresent=${!mealContextTranscript.isNullOrBlank()} connectTimeoutMs=${connection.connectTimeout} readTimeoutMs=${connection.readTimeout}",
+          )
           connection.outputStream.bufferedWriter().use { writer ->
             writer.write(requestBody.toString())
           }
 
           val statusCode = connection.responseCode
+          Log.d(TAG, "Meal analysis response statusCode=$statusCode")
           if (statusCode !in 200..299) {
             throw IOException(readErrorMessage(connection, statusCode))
           }
 
           val responseBody = connection.inputStream.bufferedReader().use { it.readText() }
+          Log.d(TAG, "Meal analysis response bytes=${responseBody.length}")
           parseAnalysisResponse(responseBody)
         }
         .also {
           connection.disconnect()
         }
         .getOrElse {
+          Log.e(
+              TAG,
+              "Meal analysis request failed root=${describeThrowableChain(it)}",
+              it,
+          )
           throw IOException(it.message ?: "Could not analyze meal image", it)
         }
   }
@@ -297,7 +310,18 @@ class NutritionApiClient {
   }
 
   companion object {
+    private const val TAG = "SculptNutritionApi"
     private const val BASE_URL = "https://api.openai.com/v1"
     private const val MODEL_NAME = "gpt-4.1-mini"
+  }
+
+  private fun describeThrowableChain(throwable: Throwable): String {
+    val parts = mutableListOf<String>()
+    var current: Throwable? = throwable
+    while (current != null) {
+      parts += "${current::class.java.simpleName}:${current.message.orEmpty()}"
+      current = current.cause
+    }
+    return parts.joinToString(" <- ")
   }
 }

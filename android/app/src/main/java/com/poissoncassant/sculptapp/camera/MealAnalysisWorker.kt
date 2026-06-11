@@ -44,9 +44,16 @@ class MealAnalysisWorker(
             throw IOException("No validated API key available")
           }
 
+          Log.d(
+              TAG,
+              "Starting analysis rawPhotoPath=$rawPhotoPath transcriptPresent=${mealContextTranscript.isNotBlank()} rawExists=${rawPhotoFile.exists()} rawBytes=${rawPhotoFile.length()}",
+          )
           Log.d(TAG, "Compressing raw photo at $rawPhotoPath")
           compressedFile = ImageCompressor.compressToJpeg(applicationContext, rawPhotoFile)
-          Log.d(TAG, "Analyzing compressed image at ${compressedFile?.absolutePath}")
+          Log.d(
+              TAG,
+              "Analyzing compressed image at ${compressedFile?.absolutePath} compressedBytes=${compressedFile?.length()}",
+          )
           val estimate =
               NutritionApiClient().analyzeMealImage(
                   apiKey = apiKey,
@@ -81,6 +88,10 @@ class MealAnalysisWorker(
           compressedFile?.delete()
 
           val message = userFacingFailureMessage(throwable)
+          Log.e(
+              TAG,
+              "Failure resolved to widgetMessage=\"$message\" rawPath=$rawPhotoPath compressedPath=${compressedFile?.absolutePath}",
+          )
           if (shouldRenderFailureOnWidget(message)) {
             WidgetStateRepository(applicationContext).markAnalysisFailed(message)
           } else {
