@@ -16,8 +16,11 @@
     <string name="widget_hint_minus">-</string>
     <string name="widget_analysis_in_progress">Analyzing meal</string>
     <string name="widget_analysis_busy_hint">Please wait...</string>
+    <string name="widget_analysis_busy_supporting">Processing image...</string>
     <string name="widget_analysis_error_title">Last scan failed</string>
+    <string name="widget_analysis_error_secondary">Try again</string>
     <string name="widget_analysis_error_fallback">Try taking the photo again</string>
+    <string name="widget_no_meal_secondary">Take a photo</string>
     <string name="meal_capture_back">Go back</string>
     <string name="meal_capture_take_photo">Take photo</string>
     <string name="meal_capture_validate">Send meal</string>

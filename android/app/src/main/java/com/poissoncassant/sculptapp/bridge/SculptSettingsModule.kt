@@ -70,7 +70,7 @@ class SculptSettingsModule(reactContext: ReactApplicationContext) :
   fun resetToday(promise: Promise) {
     try {
       WidgetStateRepository(reactApplicationContext).resetToday()
-      CalorieWidgetRenderer.refreshAll(reactApplicationContext)
+      CalorieWidgetRenderer.refreshAll(reactApplicationContext, usePartialUpdate = false)
       promise.resolve(buildSettingsMap())
     } catch (exception: Exception) {
       promise.reject("reset_today_failed", exception)

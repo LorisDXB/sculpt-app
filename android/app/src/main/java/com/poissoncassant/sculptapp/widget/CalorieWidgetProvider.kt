@@ -68,7 +68,7 @@ class CalorieWidgetProvider : AppWidgetProvider() {
       }
       ACTION_RESET_TODAY -> {
         WidgetStateRepository(context).resetToday()
-        CalorieWidgetRenderer.refreshAll(context)
+        CalorieWidgetRenderer.refreshAll(context, usePartialUpdate = false)
       }
     }
   }

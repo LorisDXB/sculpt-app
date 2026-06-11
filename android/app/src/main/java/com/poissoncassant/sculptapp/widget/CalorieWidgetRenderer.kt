@@ -40,8 +40,6 @@ object CalorieWidgetRenderer {
   ) {
     val state = WidgetStateRepository(context).readState()
     val lastMeal = state.lastMeal
-    val macroBottomPadding = dpToPx(context, 20)
-    val statusBottomPadding = dpToPx(context, 12)
 
     Log.d(
         TAG,
@@ -98,37 +96,30 @@ object CalorieWidgetRenderer {
       )
 
       if (state.analysisStatus == AnalysisStatus.ANALYZING) {
-        views.setViewVisibility(R.id.widget_last_meal_label, android.view.View.VISIBLE)
         views.setTextViewText(R.id.widget_last_meal_name, context.getString(R.string.widget_analysis_in_progress))
-        views.setTextViewText(R.id.widget_last_meal_value, "")
-        views.setTextViewText(R.id.widget_macro_value, "")
-        views.setViewPadding(R.id.widget_macro_value, 0, 8, 0, statusBottomPadding)
+        views.setTextViewText(R.id.widget_last_meal_value, context.getString(R.string.widget_analysis_busy_hint))
+        views.setTextViewText(R.id.widget_macro_value, context.getString(R.string.widget_analysis_busy_supporting))
         views.setViewVisibility(R.id.widget_analysis_progress, android.view.View.VISIBLE)
         views.setViewVisibility(R.id.widget_last_meal_increase_zone, android.view.View.VISIBLE)
         views.setViewVisibility(R.id.widget_last_meal_decrease_zone, android.view.View.VISIBLE)
       } else if (state.analysisStatus == AnalysisStatus.ERROR) {
-        views.setViewVisibility(R.id.widget_last_meal_label, android.view.View.VISIBLE)
         views.setTextViewText(R.id.widget_last_meal_name, context.getString(R.string.widget_analysis_error_title))
-        views.setTextViewText(R.id.widget_last_meal_value, "")
+        views.setTextViewText(R.id.widget_last_meal_value, context.getString(R.string.widget_analysis_error_secondary))
         views.setTextViewText(
             R.id.widget_macro_value,
             state.analysisMessage ?: context.getString(R.string.widget_analysis_error_fallback),
         )
-        views.setViewPadding(R.id.widget_macro_value, 0, 8, 0, statusBottomPadding)
         views.setViewVisibility(R.id.widget_analysis_progress, android.view.View.GONE)
         views.setViewVisibility(R.id.widget_last_meal_increase_zone, android.view.View.VISIBLE)
         views.setViewVisibility(R.id.widget_last_meal_decrease_zone, android.view.View.VISIBLE)
       } else if (lastMeal == null) {
-        views.setViewVisibility(R.id.widget_last_meal_label, android.view.View.INVISIBLE)
-        views.setTextViewText(R.id.widget_last_meal_name, "")
-        views.setTextViewText(R.id.widget_last_meal_value, "")
-        views.setTextViewText(R.id.widget_macro_value, "")
-        views.setViewPadding(R.id.widget_macro_value, 0, 8, 0, macroBottomPadding)
+        views.setTextViewText(R.id.widget_last_meal_name, context.getString(R.string.widget_no_meal))
+        views.setTextViewText(R.id.widget_last_meal_value, context.getString(R.string.widget_no_meal_secondary))
+        views.setTextViewText(R.id.widget_macro_value, context.getString(R.string.widget_macro_empty))
         views.setViewVisibility(R.id.widget_analysis_progress, android.view.View.GONE)
         views.setViewVisibility(R.id.widget_last_meal_increase_zone, android.view.View.INVISIBLE)
         views.setViewVisibility(R.id.widget_last_meal_decrease_zone, android.view.View.INVISIBLE)
       } else {
-        views.setViewVisibility(R.id.widget_last_meal_label, android.view.View.VISIBLE)
         views.setTextViewText(R.id.widget_last_meal_name, lastMeal.mealName)
         views.setTextViewText(
             R.id.widget_last_meal_value,
@@ -143,7 +134,6 @@ object CalorieWidgetRenderer {
                 lastMeal.fatGrams,
             ),
         )
-        views.setViewPadding(R.id.widget_macro_value, 0, 8, 0, 0)
         views.setViewVisibility(R.id.widget_analysis_progress, android.view.View.GONE)
         views.setViewVisibility(R.id.widget_last_meal_increase_zone, android.view.View.VISIBLE)
         views.setViewVisibility(R.id.widget_last_meal_decrease_zone, android.view.View.VISIBLE)
@@ -266,26 +256,33 @@ object CalorieWidgetRenderer {
         0,
         0,
         dpToPx(context, presentation.columnGapDp),
-        dpToPx(context, presentation.contentBottomInsetDp),
+        0,
     )
     views.setViewPadding(
         R.id.widget_right_column,
         dpToPx(context, presentation.columnGapDp),
         0,
         0,
-        dpToPx(context, presentation.contentBottomInsetDp),
+        0,
     )
 
+    views.setTextViewTextSize(R.id.widget_section_label, TypedValue.COMPLEX_UNIT_SP, presentation.labelSp)
     views.setTextViewTextSize(R.id.widget_remaining_value, TypedValue.COMPLEX_UNIT_SP, presentation.remainingValueSp)
     views.setTextViewTextSize(R.id.widget_remaining_meta, TypedValue.COMPLEX_UNIT_SP, presentation.metaSp)
     views.setTextViewTextSize(R.id.widget_total_macro_value, TypedValue.COMPLEX_UNIT_SP, presentation.macroSp)
+    views.setTextViewTextSize(R.id.widget_last_meal_label, TypedValue.COMPLEX_UNIT_SP, presentation.labelSp)
     views.setTextViewTextSize(R.id.widget_last_meal_name, TypedValue.COMPLEX_UNIT_SP, presentation.mealNameSp)
     views.setTextViewTextSize(R.id.widget_last_meal_value, TypedValue.COMPLEX_UNIT_SP, presentation.mealValueSp)
     views.setTextViewTextSize(R.id.widget_macro_value, TypedValue.COMPLEX_UNIT_SP, presentation.macroSp)
     views.setTextViewTextSize(R.id.widget_open_app_button, TypedValue.COMPLEX_UNIT_SP, presentation.buttonSp)
     views.setTextViewTextSize(R.id.widget_step_button, TypedValue.COMPLEX_UNIT_SP, presentation.buttonSp)
+    views.setInt(R.id.widget_section_label, "setMaxLines", presentation.labelMaxLines)
+    views.setInt(R.id.widget_remaining_meta, "setMaxLines", presentation.metaMaxLines)
+    views.setInt(R.id.widget_total_macro_value, "setMaxLines", presentation.supportingMaxLines)
+    views.setInt(R.id.widget_last_meal_label, "setMaxLines", presentation.labelMaxLines)
     views.setInt(R.id.widget_last_meal_name, "setMaxLines", presentation.lastMealNameMaxLines)
-    views.setInt(R.id.widget_macro_value, "setMaxLines", presentation.lastMealMacroMaxLines)
+    views.setInt(R.id.widget_last_meal_value, "setMaxLines", presentation.secondaryMaxLines)
+    views.setInt(R.id.widget_macro_value, "setMaxLines", presentation.supportingMaxLines)
 
     views.setViewPadding(
         R.id.widget_bottom_actions,
@@ -308,14 +305,6 @@ object CalorieWidgetRenderer {
         dpToPx(context, presentation.buttonHorizontalPaddingDp),
         dpToPx(context, presentation.buttonVerticalPaddingDp),
     )
-
-    val macrosVisibility =
-        if (presentation.showTotalMacros) android.view.View.VISIBLE else android.view.View.GONE
-    views.setViewVisibility(R.id.widget_total_macro_value, macrosVisibility)
-    views.setViewVisibility(
-        R.id.widget_last_meal_label,
-        if (presentation.showLastMealLabel) android.view.View.VISIBLE else android.view.View.GONE,
-    )
   }
 
   private fun presentationFor(options: Bundle): WidgetPresentation {
@@ -328,60 +317,63 @@ object CalorieWidgetRenderer {
               contentHorizontalPaddingDp = 18,
               contentVerticalPaddingDp = 18,
               columnGapDp = 12,
-              contentBottomInsetDp = 24,
+              labelSp = 12f,
+              labelMaxLines = 1,
               remainingValueSp = 31f,
               mealNameSp = 17f,
               mealValueSp = 23f,
               metaSp = 12f,
               macroSp = 12f,
+              metaMaxLines = 2,
               lastMealNameMaxLines = 2,
-              lastMealMacroMaxLines = 2,
+              secondaryMaxLines = 1,
+              supportingMaxLines = 2,
               buttonSp = 13f,
               buttonHorizontalPaddingDp = 12,
               buttonVerticalPaddingDp = 10,
               bottomActionsMarginTopDp = 12,
-              showTotalMacros = true,
-              showLastMealLabel = true,
           )
       minHeightDp <= 125 || minWidthDp <= 250 ->
           WidgetPresentation(
-              contentHorizontalPaddingDp = 13,
-              contentVerticalPaddingDp = 13,
-              columnGapDp = 7,
-              contentBottomInsetDp = 14,
-              remainingValueSp = 20f,
-              mealNameSp = 10f,
+              contentHorizontalPaddingDp = 12,
+              contentVerticalPaddingDp = 12,
+              columnGapDp = 6,
+              labelSp = 9f,
+              labelMaxLines = 1,
+              remainingValueSp = 18f,
+              mealNameSp = 11f,
               mealValueSp = 12f,
-              metaSp = 10f,
-              macroSp = 9f,
-              lastMealNameMaxLines = 1,
-              lastMealMacroMaxLines = 1,
-              buttonSp = 12f,
-              buttonHorizontalPaddingDp = 10,
-              buttonVerticalPaddingDp = 8,
+              metaSp = 9f,
+              macroSp = 8f,
+              metaMaxLines = 2,
+              lastMealNameMaxLines = 2,
+              secondaryMaxLines = 1,
+              supportingMaxLines = 2,
+              buttonSp = 11f,
+              buttonHorizontalPaddingDp = 8,
+              buttonVerticalPaddingDp = 7,
               bottomActionsMarginTopDp = 8,
-              showTotalMacros = false,
-              showLastMealLabel = false,
           )
       else ->
           WidgetPresentation(
               contentHorizontalPaddingDp = 16,
               contentVerticalPaddingDp = 16,
               columnGapDp = 10,
-              contentBottomInsetDp = 20,
+              labelSp = 12f,
+              labelMaxLines = 1,
               remainingValueSp = 28f,
               mealNameSp = 16f,
               mealValueSp = 22f,
               metaSp = 12f,
               macroSp = 12f,
+              metaMaxLines = 2,
               lastMealNameMaxLines = 2,
-              lastMealMacroMaxLines = 2,
+              secondaryMaxLines = 1,
+              supportingMaxLines = 2,
               buttonSp = 13f,
               buttonHorizontalPaddingDp = 12,
               buttonVerticalPaddingDp = 10,
               bottomActionsMarginTopDp = 12,
-              showTotalMacros = true,
-              showLastMealLabel = true,
           )
     }
   }
@@ -445,20 +437,21 @@ object CalorieWidgetRenderer {
       val contentHorizontalPaddingDp: Int,
       val contentVerticalPaddingDp: Int,
       val columnGapDp: Int,
-      val contentBottomInsetDp: Int,
+      val labelSp: Float,
+      val labelMaxLines: Int,
       val remainingValueSp: Float,
       val mealNameSp: Float,
       val mealValueSp: Float,
       val metaSp: Float,
       val macroSp: Float,
+      val metaMaxLines: Int,
       val lastMealNameMaxLines: Int,
-      val lastMealMacroMaxLines: Int,
+      val secondaryMaxLines: Int,
+      val supportingMaxLines: Int,
       val buttonSp: Float,
       val buttonHorizontalPaddingDp: Int,
       val buttonVerticalPaddingDp: Int,
       val bottomActionsMarginTopDp: Int,
-      val showTotalMacros: Boolean,
-      val showLastMealLabel: Boolean,
   )
 
   private const val TAG = "SculptWidgetRenderer"

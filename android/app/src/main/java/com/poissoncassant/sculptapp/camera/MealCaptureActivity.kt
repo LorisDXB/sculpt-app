@@ -440,8 +440,10 @@ class MealCaptureActivity : ComponentActivity() {
 
     val recognizerIntent =
         Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+          val preferredLocale = Locale.FRANCE
           putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-          putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+          putExtra(RecognizerIntent.EXTRA_LANGUAGE, preferredLocale.toLanguageTag())
+          putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, preferredLocale.toLanguageTag())
           putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
           putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
           putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 800L)
