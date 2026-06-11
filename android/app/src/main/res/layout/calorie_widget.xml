@@ -209,19 +209,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="0dp"
                         android:layout_weight="2"
-                        android:gravity="top|start">
-
-                        <TextView
-                            android:layout_width="16dp"
-                            android:layout_height="16dp"
-                            android:layout_margin="1dp"
-                            android:background="@drawable/widget_hint_background"
-                            android:gravity="center"
-                            android:text="@string/widget_hint_plus"
-                            android:textColor="#D9FFFFFF"
-                            android:textSize="10sp"
-                            android:textStyle="bold" />
-                    </LinearLayout>
+                        android:gravity="top|start" />
 
                     <FrameLayout
                         android:id="@+id/widget_remaining_dead_zone"
@@ -234,19 +222,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="0dp"
                         android:layout_weight="2"
-                        android:gravity="bottom|start">
-
-                        <TextView
-                            android:layout_width="16dp"
-                            android:layout_height="16dp"
-                            android:layout_margin="1dp"
-                            android:background="@drawable/widget_hint_background"
-                            android:gravity="center"
-                            android:text="@string/widget_hint_minus"
-                            android:textColor="#D9FFFFFF"
-                            android:textSize="10sp"
-                            android:textStyle="bold" />
-                    </LinearLayout>
+                        android:gravity="bottom|start" />
                 </LinearLayout>
 
                 <FrameLayout
@@ -266,19 +242,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="0dp"
                         android:layout_weight="2"
-                        android:gravity="top|end">
-
-                        <TextView
-                            android:layout_width="16dp"
-                            android:layout_height="16dp"
-                            android:layout_margin="1dp"
-                            android:background="@drawable/widget_hint_background"
-                            android:gravity="center"
-                            android:text="@string/widget_hint_plus"
-                            android:textColor="#D9FFFFFF"
-                            android:textSize="10sp"
-                            android:textStyle="bold" />
-                    </LinearLayout>
+                        android:gravity="top|end" />
 
                     <FrameLayout
                         android:id="@+id/widget_last_meal_dead_zone"
@@ -291,21 +255,10 @@
                         android:layout_width="match_parent"
                         android:layout_height="0dp"
                         android:layout_weight="2"
-                        android:gravity="bottom|end">
-
-                        <TextView
-                            android:layout_width="16dp"
-                            android:layout_height="16dp"
-                            android:layout_margin="1dp"
-                            android:background="@drawable/widget_hint_background"
-                            android:gravity="center"
-                            android:text="@string/widget_hint_minus"
-                            android:textColor="#D9FFFFFF"
-                            android:textSize="10sp"
-                            android:textStyle="bold" />
-                    </LinearLayout>
+                        android:gravity="bottom|end" />
                 </LinearLayout>
             </LinearLayout>
+
         </FrameLayout>
 
         <LinearLayout
@@ -343,4 +296,60 @@
                 android:textSize="13sp" />
         </LinearLayout>
     </LinearLayout>
+
+    <TextView
+        android:id="@+id/widget_remaining_increase_hint"
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:layout_gravity="top|start"
+        android:layout_marginStart="17dp"
+        android:layout_marginTop="17dp"
+        android:background="@drawable/widget_hint_background"
+        android:gravity="center"
+        android:text="@string/widget_hint_plus"
+        android:textColor="#D9FFFFFF"
+        android:textSize="10sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/widget_remaining_decrease_hint"
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:layout_gravity="bottom|start"
+        android:layout_marginStart="17dp"
+        android:layout_marginBottom="57dp"
+        android:background="@drawable/widget_hint_background"
+        android:gravity="center"
+        android:text="@string/widget_hint_minus"
+        android:textColor="#D9FFFFFF"
+        android:textSize="10sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/widget_last_meal_increase_hint"
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:layout_gravity="top|end"
+        android:layout_marginEnd="17dp"
+        android:layout_marginTop="17dp"
+        android:background="@drawable/widget_hint_background"
+        android:gravity="center"
+        android:text="@string/widget_hint_plus"
+        android:textColor="#D9FFFFFF"
+        android:textSize="10sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/widget_last_meal_decrease_hint"
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="17dp"
+        android:layout_marginBottom="57dp"
+        android:background="@drawable/widget_hint_background"
+        android:gravity="center"
+        android:text="@string/widget_hint_minus"
+        android:textColor="#D9FFFFFF"
+        android:textSize="10sp"
+        android:textStyle="bold" />
 </FrameLayout>
