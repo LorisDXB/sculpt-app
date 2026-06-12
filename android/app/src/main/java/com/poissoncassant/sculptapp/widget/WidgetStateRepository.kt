@@ -6,6 +6,7 @@ import java.io.File
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import kotlin.math.roundToInt
 
 class WidgetStateRepository(context: Context) {
   private val appContext = context.applicationContext
@@ -25,8 +26,11 @@ class WidgetStateRepository(context: Context) {
       }
       storedDate != today -> {
         Log.d(TAG, "Date rollover detected storedDate=$storedDate newDate=$today, resetting daily state")
+        val previousState = readPersistedState(storedDate)
+        val carriedWeightTenths = readStoredWeightTenths(storedDate) ?: previousState.currentWeightTenths
+        storeWeightTenths(today, carriedWeightTenths)
         val resetState =
-            readPersistedState(storedDate).copy(
+            previousState.copy(
                 date = today,
                 caloriesConsumedToday = 0,
                 totalProteinGrams = 0,
@@ -35,6 +39,11 @@ class WidgetStateRepository(context: Context) {
                 lastMeal = null,
                 analysisStatus = AnalysisStatus.IDLE,
                 analysisMessage = null,
+                currentWeightTenths = carriedWeightTenths,
+                selectedWeightDigit = DEFAULT_SELECTED_WEIGHT_DIGIT,
+                weightDeltaVsYesterdayTenths = calculateWeightDeltaVsYesterday(today, carriedWeightTenths),
+                weightDeltaVsSevenDayAverageTenths =
+                    calculateWeightDeltaVsSevenDayAverage(today, carriedWeightTenths),
             )
         persistState(resetState)
         resetState
@@ -122,6 +131,26 @@ class WidgetStateRepository(context: Context) {
                 (current.totalFatGrams + nextScaledMeal.fatGrams - lastMeal.fatGrams)
                     .coerceAtLeast(0),
             lastMeal = nextScaledMeal,
+        ),
+    )
+  }
+
+  fun selectWeightDigit(digit: WeightDigit) {
+    val current = readState()
+    persistState(current.copy(selectedWeightDigit = digit))
+  }
+
+  fun adjustSelectedWeightDigit(increase: Boolean) {
+    val current = readState()
+    val nextWeightTenths =
+        adjustWeightDigitValue(current.currentWeightTenths, current.selectedWeightDigit, increase)
+    storeWeightTenths(current.date, nextWeightTenths)
+    persistState(
+        current.copy(
+            currentWeightTenths = nextWeightTenths,
+            weightDeltaVsYesterdayTenths = calculateWeightDeltaVsYesterday(current.date, nextWeightTenths),
+            weightDeltaVsSevenDayAverageTenths =
+                calculateWeightDeltaVsSevenDayAverage(current.date, nextWeightTenths),
         ),
     )
   }
@@ -274,6 +303,21 @@ class WidgetStateRepository(context: Context) {
                     fatGrams = preferences.getInt(KEY_FAT_GRAMS, 0),
                 )
               },
+          currentWeightTenths = getOrInitializeWeightTenthsForDate(date),
+          selectedWeightDigit =
+              preferences.getString(KEY_SELECTED_WEIGHT_DIGIT, DEFAULT_SELECTED_WEIGHT_DIGIT.name)?.let {
+                runCatching { WeightDigit.valueOf(it) }.getOrDefault(DEFAULT_SELECTED_WEIGHT_DIGIT)
+              } ?: DEFAULT_SELECTED_WEIGHT_DIGIT,
+          weightDeltaVsYesterdayTenths =
+              calculateWeightDeltaVsYesterday(
+                  date = date,
+                  currentWeightTenths = getOrInitializeWeightTenthsForDate(date),
+              ),
+          weightDeltaVsSevenDayAverageTenths =
+              calculateWeightDeltaVsSevenDayAverage(
+                  date = date,
+                  currentWeightTenths = getOrInitializeWeightTenthsForDate(date),
+              ),
       )
 
   private fun persistState(state: CalorieWidgetState) {
@@ -288,6 +332,7 @@ class WidgetStateRepository(context: Context) {
         .putInt(KEY_ADJUSTMENT_STEP, state.adjustmentStep)
         .putBoolean(KEY_HAS_LAST_MEAL, state.lastMeal != null)
         .putString(KEY_ANALYSIS_STATUS, state.analysisStatus.name)
+        .putString(KEY_SELECTED_WEIGHT_DIGIT, state.selectedWeightDigit.name)
         .apply {
           if (state.analysisMessage.isNullOrBlank()) {
             remove(KEY_ANALYSIS_MESSAGE)
@@ -325,7 +370,96 @@ class WidgetStateRepository(context: Context) {
           lastMeal = null,
           analysisStatus = AnalysisStatus.IDLE,
           analysisMessage = null,
+          currentWeightTenths = getOrInitializeWeightTenthsForDate(date),
+          selectedWeightDigit = DEFAULT_SELECTED_WEIGHT_DIGIT,
+          weightDeltaVsYesterdayTenths = calculateWeightDeltaVsYesterday(date, getOrInitializeWeightTenthsForDate(date)),
+          weightDeltaVsSevenDayAverageTenths =
+              calculateWeightDeltaVsSevenDayAverage(date, getOrInitializeWeightTenthsForDate(date)),
       )
+
+  private fun getOrInitializeWeightTenthsForDate(date: String): Int {
+    readStoredWeightTenths(date)?.let { return it }
+    val carriedWeightTenths = findMostRecentWeightTenths(beforeDate = date) ?: DEFAULT_WEIGHT_TENTHS
+    storeWeightTenths(date, carriedWeightTenths)
+    return carriedWeightTenths
+  }
+
+  private fun readStoredWeightTenths(date: String): Int? =
+      if (preferences.contains(weightKey(date))) preferences.getInt(weightKey(date), DEFAULT_WEIGHT_TENTHS) else null
+
+  private fun storeWeightTenths(date: String, weightTenths: Int) {
+    preferences.edit().putInt(weightKey(date), weightTenths.coerceIn(MIN_WEIGHT_TENTHS, MAX_WEIGHT_TENTHS)).apply()
+  }
+
+  private fun findMostRecentWeightTenths(beforeDate: String): Int? {
+    val keys =
+        preferences.all.keys
+            .filter { it.startsWith(KEY_WEIGHT_PREFIX) }
+            .mapNotNull { key ->
+              val date = key.removePrefix(KEY_WEIGHT_PREFIX)
+              runCatching { LocalDate.parse(date) }.getOrNull()?.let { parsedDate -> key to parsedDate }
+            }
+            .filter { (_, parsedDate) -> parsedDate.isBefore(LocalDate.parse(beforeDate)) }
+            .sortedByDescending { (_, parsedDate) -> parsedDate }
+
+    val latestKey = keys.firstOrNull()?.first ?: return null
+    return preferences.getInt(latestKey, DEFAULT_WEIGHT_TENTHS)
+  }
+
+  private fun calculateWeightDeltaVsYesterday(date: String, currentWeightTenths: Int): Int? {
+    val yesterday = LocalDate.parse(date).minusDays(1).toString()
+    val previousWeight = readStoredWeightTenths(yesterday) ?: return null
+    return currentWeightTenths - previousWeight
+  }
+
+  private fun calculateWeightDeltaVsSevenDayAverage(date: String, currentWeightTenths: Int): Int? {
+    val baseDate = LocalDate.parse(date)
+    val recentWeights =
+        (1L..7L).mapNotNull { daysBack ->
+          readStoredWeightTenths(baseDate.minusDays(daysBack).toString())
+        }
+    if (recentWeights.isEmpty()) {
+      return null
+    }
+
+    val averageTenths = recentWeights.average()
+    return (currentWeightTenths - averageTenths).roundToInt()
+  }
+
+  private fun adjustWeightDigitValue(
+      weightTenths: Int,
+      digit: WeightDigit,
+      increase: Boolean,
+  ): Int {
+    val boundedWeight = weightTenths.coerceIn(MIN_WEIGHT_TENTHS, MAX_WEIGHT_TENTHS)
+    val hundreds = (boundedWeight / 1000) % 10
+    val tens = (boundedWeight / 100) % 10
+    val ones = (boundedWeight / 10) % 10
+    val tenths = boundedWeight % 10
+
+    val updatedDigits =
+        when (digit) {
+          WeightDigit.HUNDREDS -> intArrayOf(adjustDigit(hundreds, increase), tens, ones, tenths)
+          WeightDigit.TENS -> intArrayOf(hundreds, adjustDigit(tens, increase), ones, tenths)
+          WeightDigit.ONES -> intArrayOf(hundreds, tens, adjustDigit(ones, increase), tenths)
+          WeightDigit.TENTHS -> intArrayOf(hundreds, tens, ones, adjustDigit(tenths, increase))
+        }
+
+    val rebuiltWeight =
+        updatedDigits[0] * 1000 +
+            updatedDigits[1] * 100 +
+            updatedDigits[2] * 10 +
+            updatedDigits[3]
+    return rebuiltWeight.coerceIn(MIN_WEIGHT_TENTHS, MAX_WEIGHT_TENTHS)
+  }
+
+  private fun adjustDigit(value: Int, increase: Boolean): Int =
+      when {
+        increase -> (value + 1) % 10
+        else -> (value + 9) % 10
+      }
+
+  private fun weightKey(date: String): String = "$KEY_WEIGHT_PREFIX$date"
 
   private fun deleteStoredCaptureFiles() {
     deleteFileIfExists(preferences.getString(KEY_LAST_CAPTURED_RAW_PATH, null))
@@ -362,9 +496,15 @@ class WidgetStateRepository(context: Context) {
     private const val KEY_LAST_CAPTURED_COMPRESSED_PATH = "last_captured_compressed_path"
     private const val KEY_ANALYSIS_STATUS = "analysis_status"
     private const val KEY_ANALYSIS_MESSAGE = "analysis_message"
+    private const val KEY_SELECTED_WEIGHT_DIGIT = "selected_weight_digit"
+    private const val KEY_WEIGHT_PREFIX = "weight_tenths_"
 
     private const val DEFAULT_DAILY_TARGET = 2500
     private const val DEFAULT_ADJUSTMENT_STEP = 50
+    private const val DEFAULT_WEIGHT_TENTHS = 750
+    private const val MIN_WEIGHT_TENTHS = 0
+    private const val MAX_WEIGHT_TENTHS = 9999
+    private val DEFAULT_SELECTED_WEIGHT_DIGIT = WeightDigit.ONES
     private const val TAG = "SculptWidgetState"
     private val ADJUSTMENT_STEPS = listOf(10, 50, 100, 250)
 

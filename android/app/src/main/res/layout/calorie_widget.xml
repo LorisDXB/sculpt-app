@@ -34,7 +34,7 @@
                     android:id="@+id/widget_left_column"
                     android:layout_width="0dp"
                     android:layout_height="match_parent"
-                    android:layout_weight="1"
+                    android:layout_weight="3"
                     android:orientation="vertical"
                     android:paddingEnd="10dp">
 
@@ -85,98 +85,337 @@
 
                 </LinearLayout>
 
-                <LinearLayout
+                <FrameLayout
                     android:id="@+id/widget_right_column"
                     android:layout_width="0dp"
                     android:layout_height="match_parent"
-                    android:layout_weight="1"
-                    android:gravity="end"
-                    android:orientation="vertical"
+                    android:layout_weight="2"
                     android:paddingStart="10dp">
 
                     <LinearLayout
-                        android:id="@+id/widget_last_meal_top_group"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
+                        android:layout_height="match_parent"
+                        android:gravity="end"
                         android:orientation="vertical">
 
-                        <TextView
-                            android:id="@+id/widget_last_meal_label"
+                        <LinearLayout
+                            android:id="@+id/widget_last_meal_top_group"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginEnd="24dp"
-                            android:gravity="end"
-                            android:text="@string/widget_last_meal_label"
-                            android:textAllCaps="true"
-                            android:textColor="#99FFFFFF"
-                            android:textSize="12sp" />
+                            android:orientation="vertical">
 
-                        <TextView
-                            android:id="@+id/widget_last_meal_name"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="6dp"
-                            android:autoSizeMaxTextSize="16sp"
-                            android:autoSizeMinTextSize="8sp"
-                            android:autoSizeStepGranularity="1sp"
-                            android:autoSizeTextType="uniform"
-                            android:ellipsize="end"
-                            android:gravity="end"
-                            android:maxLines="2"
-                            android:textColor="#FFFFFFFF"
-                            android:textSize="16sp"
-                            android:textStyle="bold" />
+                            <TextView
+                                android:id="@+id/widget_last_meal_label"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginEnd="24dp"
+                                android:gravity="end"
+                                android:text="@string/widget_last_meal_label"
+                                android:textAllCaps="true"
+                                android:textColor="#99FFFFFF"
+                                android:textSize="12sp" />
 
-                        <TextView
-                            android:id="@+id/widget_last_meal_value"
+                            <TextView
+                                android:id="@+id/widget_last_meal_name"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="6dp"
+                                android:autoSizeMaxTextSize="16sp"
+                                android:autoSizeMinTextSize="8sp"
+                                android:autoSizeStepGranularity="1sp"
+                                android:autoSizeTextType="uniform"
+                                android:ellipsize="end"
+                                android:gravity="end"
+                                android:maxLines="2"
+                                android:textColor="#FFFFFFFF"
+                                android:textSize="16sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/widget_last_meal_value"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="4dp"
+                                android:autoSizeMaxTextSize="22sp"
+                                android:autoSizeMinTextSize="10sp"
+                                android:autoSizeStepGranularity="1sp"
+                                android:autoSizeTextType="uniform"
+                                android:gravity="end"
+                                android:includeFontPadding="false"
+                                android:maxLines="1"
+                                android:textColor="#FFFFFFFF"
+                                android:textSize="22sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+                        <FrameLayout
+                            android:id="@+id/widget_weight_mode_container"
                             android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:autoSizeMaxTextSize="22sp"
-                            android:autoSizeMinTextSize="10sp"
-                            android:autoSizeStepGranularity="1sp"
-                            android:autoSizeTextType="uniform"
-                            android:gravity="end"
-                            android:includeFontPadding="false"
-                            android:maxLines="1"
-                            android:textColor="#FFFFFFFF"
-                            android:textSize="22sp"
-                            android:textStyle="bold" />
+                            android:layout_height="0dp"
+                            android:layout_weight="1"
+                            android:paddingEnd="4dp"
+                            android:visibility="gone">
+
+                            <TextView
+                                android:id="@+id/widget_weight_increase_button"
+                                android:layout_width="16dp"
+                                android:layout_height="16dp"
+                                android:layout_gravity="top|end"
+                                android:layout_margin="1dp"
+                                android:background="@drawable/widget_hint_background"
+                                android:gravity="center"
+                                android:text="@string/widget_hint_plus"
+                                android:textColor="#D9FFFFFF"
+                                android:textSize="10sp"
+                                android:textStyle="bold" />
+
+                            <LinearLayout
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_gravity="center_vertical|end"
+                                android:gravity="end"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:id="@+id/widget_weight_label"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginEnd="24dp"
+                                    android:gravity="end"
+                                    android:text="@string/widget_weight_label"
+                                    android:textAllCaps="true"
+                                    android:textColor="#99FFFFFF"
+                                    android:textSize="12sp" />
+
+                                <LinearLayout
+                                    android:id="@+id/widget_weight_digits_row"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="6dp"
+                                    android:gravity="end|center_vertical"
+                                    android:orientation="horizontal">
+
+                                    <TextView
+                                        android:id="@+id/widget_weight_digit_hundreds"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:gravity="center"
+                                        android:minWidth="22dp"
+                                        android:paddingHorizontal="3dp"
+                                        android:textColor="#B3FFFFFF"
+                                        android:textSize="22sp"
+                                        android:textStyle="bold" />
+
+                                    <TextView
+                                        android:id="@+id/widget_weight_digit_tens"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:gravity="center"
+                                        android:minWidth="22dp"
+                                        android:paddingHorizontal="3dp"
+                                        android:textColor="#B3FFFFFF"
+                                        android:textSize="22sp"
+                                        android:textStyle="bold" />
+
+                                    <TextView
+                                        android:id="@+id/widget_weight_digit_ones"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:gravity="center"
+                                        android:minWidth="22dp"
+                                        android:paddingHorizontal="3dp"
+                                        android:textColor="#B3FFFFFF"
+                                        android:textSize="22sp"
+                                        android:textStyle="bold" />
+
+                                    <TextView
+                                        android:id="@+id/widget_weight_decimal_separator"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="."
+                                        android:textColor="#FFFFFFFF"
+                                        android:textSize="22sp"
+                                        android:textStyle="bold" />
+
+                                    <TextView
+                                        android:id="@+id/widget_weight_digit_tenths"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:gravity="center"
+                                        android:minWidth="22dp"
+                                        android:paddingHorizontal="3dp"
+                                        android:textColor="#B3FFFFFF"
+                                        android:textSize="22sp"
+                                        android:textStyle="bold" />
+
+                                    <TextView
+                                        android:id="@+id/widget_weight_unit"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:layout_marginStart="6dp"
+                                        android:text="@string/widget_weight_unit"
+                                        android:textColor="#D9FFFFFF"
+                                        android:textSize="12sp" />
+                                </LinearLayout>
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:id="@+id/widget_weight_stats_group"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="10dp"
+                                android:gravity="end"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:id="@+id/widget_weight_stat_yesterday"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:ellipsize="end"
+                                    android:gravity="end"
+                                    android:maxLines="1"
+                                    android:textColor="#D9FFFFFF"
+                                    android:textSize="12sp" />
+
+                                <TextView
+                                    android:id="@+id/widget_weight_stat_week"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="4dp"
+                                    android:ellipsize="end"
+                                    android:gravity="end"
+                                    android:maxLines="1"
+                                    android:textColor="#D9FFFFFF"
+                                    android:textSize="12sp" />
+                            </LinearLayout>
+
+                            <TextView
+                                android:id="@+id/widget_weight_decrease_button"
+                                android:layout_width="16dp"
+                                android:layout_height="16dp"
+                                android:layout_gravity="bottom|end"
+                                android:layout_margin="1dp"
+                                android:layout_marginBottom="6dp"
+                                android:background="@drawable/widget_hint_background"
+                                android:gravity="center"
+                                android:text="@string/widget_hint_minus"
+                                android:textColor="#D9FFFFFF"
+                                android:textSize="10sp"
+                                android:textStyle="bold" />
+                        </FrameLayout>
+
+                        <FrameLayout
+                            android:id="@+id/widget_last_meal_status_container"
+                            android:layout_width="match_parent"
+                            android:layout_height="0dp"
+                            android:layout_weight="1">
+
+                            <TextView
+                                android:id="@+id/widget_macro_value"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_gravity="top"
+                                android:layout_marginTop="6dp"
+                                android:autoSizeMaxTextSize="12sp"
+                                android:autoSizeMinTextSize="9sp"
+                                android:autoSizeStepGranularity="1sp"
+                                android:autoSizeTextType="uniform"
+                                android:ellipsize="end"
+                                android:gravity="end"
+                                android:maxLines="2"
+                                android:textColor="#D9FFFFFF"
+                                android:textSize="12sp" />
+
+                            <ProgressBar
+                                android:id="@+id/widget_analysis_progress"
+                                style="?android:attr/progressBarStyleSmall"
+                                android:layout_width="20dp"
+                                android:layout_height="20dp"
+                                android:layout_gravity="center_vertical|end"
+                                android:indeterminate="true"
+                                android:indeterminateTint="#FFFFFFFF"
+                                android:visibility="gone" />
+                        </FrameLayout>
                     </LinearLayout>
 
-                    <FrameLayout
-                        android:id="@+id/widget_last_meal_status_container"
+                </FrameLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/widget_weight_touch_overlay"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:baselineAligned="false"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <FrameLayout
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="3" />
+
+                <FrameLayout
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="2">
+
+                    <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="0dp"
-                        android:layout_weight="1">
+                        android:layout_height="match_parent"
+                        android:orientation="vertical">
 
-                        <TextView
-                            android:id="@+id/widget_macro_value"
+                        <FrameLayout
+                            android:id="@+id/widget_weight_increase_touch_zone"
                             android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_gravity="top"
-                            android:layout_marginTop="6dp"
-                            android:autoSizeMaxTextSize="12sp"
-                            android:autoSizeMinTextSize="9sp"
-                            android:autoSizeStepGranularity="1sp"
-                            android:autoSizeTextType="uniform"
-                            android:ellipsize="end"
-                            android:gravity="end"
-                            android:maxLines="2"
-                            android:textColor="#D9FFFFFF"
-                            android:textSize="12sp" />
+                            android:layout_height="0dp"
+                            android:layout_weight="35" />
 
-                        <ProgressBar
-                            android:id="@+id/widget_analysis_progress"
-                            style="?android:attr/progressBarStyleSmall"
-                            android:layout_width="20dp"
-                            android:layout_height="20dp"
-                            android:layout_gravity="center_vertical|end"
-                            android:indeterminate="true"
-                            android:indeterminateTint="#FFFFFFFF"
-                            android:visibility="gone" />
-                    </FrameLayout>
-                </LinearLayout>
+                        <LinearLayout
+                            android:id="@+id/widget_weight_digit_touch_row"
+                            android:layout_width="match_parent"
+                            android:layout_height="0dp"
+                            android:layout_weight="30"
+                            android:gravity="end|center_vertical"
+                            android:orientation="horizontal"
+                            android:paddingStart="10dp"
+                            android:paddingEnd="4dp">
+
+                            <FrameLayout
+                                android:id="@+id/widget_weight_digit_hundreds_touch"
+                                android:layout_width="28dp"
+                                android:layout_height="match_parent" />
+
+                            <FrameLayout
+                                android:id="@+id/widget_weight_digit_tens_touch"
+                                android:layout_width="28dp"
+                                android:layout_height="match_parent" />
+
+                            <FrameLayout
+                                android:id="@+id/widget_weight_digit_ones_touch"
+                                android:layout_width="28dp"
+                                android:layout_height="match_parent" />
+
+                            <FrameLayout
+                                android:layout_width="10dp"
+                                android:layout_height="match_parent" />
+
+                            <FrameLayout
+                                android:id="@+id/widget_weight_digit_tenths_touch"
+                                android:layout_width="28dp"
+                                android:layout_height="match_parent" />
+
+                            <FrameLayout
+                                android:layout_width="26dp"
+                                android:layout_height="match_parent" />
+                        </LinearLayout>
+
+                        <FrameLayout
+                            android:id="@+id/widget_weight_decrease_touch_zone"
+                            android:layout_width="match_parent"
+                            android:layout_height="0dp"
+                            android:layout_weight="35" />
+                    </LinearLayout>
+                </FrameLayout>
             </LinearLayout>
 
             <LinearLayout

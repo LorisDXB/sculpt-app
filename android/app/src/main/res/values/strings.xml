@@ -11,6 +11,12 @@
     <string name="widget_no_meal">No meal today</string>
     <string name="widget_step_button_format">Step %1$d</string>
     <string name="widget_step_button_busy">Busy</string>
+    <string name="widget_weight_button">Weight</string>
+    <string name="widget_weight_label">Weight</string>
+    <string name="widget_weight_unit">kg</string>
+    <string name="widget_weight_stat_vs_yesterday">vs yday</string>
+    <string name="widget_weight_stat_vs_7d">vs 7d</string>
+    <string name="widget_weight_stat_no_data">--</string>
     <string name="widget_add_meal">Add meal</string>
     <string name="widget_hint_plus">+</string>
     <string name="widget_hint_minus">-</string>

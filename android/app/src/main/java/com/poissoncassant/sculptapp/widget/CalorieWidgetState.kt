@@ -11,6 +11,10 @@ data class CalorieWidgetState(
     val lastMeal: LastMealState?,
     val analysisStatus: AnalysisStatus,
     val analysisMessage: String?,
+    val currentWeightTenths: Int,
+    val selectedWeightDigit: WeightDigit,
+    val weightDeltaVsYesterdayTenths: Int?,
+    val weightDeltaVsSevenDayAverageTenths: Int?,
 ) {
   val caloriesRemaining: Int
     get() = dailyCalorieTarget - caloriesConsumedToday
@@ -30,3 +34,10 @@ data class LastMealState(
     val carbsGrams: Int,
     val fatGrams: Int,
 )
+
+enum class WeightDigit {
+  HUNDREDS,
+  TENS,
+  ONES,
+  TENTHS,
+}

@@ -344,6 +344,9 @@ class MealCaptureActivity : ComponentActivity() {
               }
               CalorieWidgetRenderer.refreshAll(this)
               Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+              if (throwable is NotFoodException) {
+                discardCurrentCapture()
+              }
               syncUiState()
             }
           }

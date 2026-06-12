@@ -62,6 +62,30 @@ class CalorieWidgetProvider : AppWidgetProvider() {
         WidgetStateRepository(context).adjustLastMealCalories(increase = false)
         CalorieWidgetRenderer.refreshAll(context)
       }
+      ACTION_SELECT_WEIGHT_HUNDREDS -> {
+        WidgetStateRepository(context).selectWeightDigit(WeightDigit.HUNDREDS)
+        CalorieWidgetRenderer.refreshAll(context)
+      }
+      ACTION_SELECT_WEIGHT_TENS -> {
+        WidgetStateRepository(context).selectWeightDigit(WeightDigit.TENS)
+        CalorieWidgetRenderer.refreshAll(context)
+      }
+      ACTION_SELECT_WEIGHT_ONES -> {
+        WidgetStateRepository(context).selectWeightDigit(WeightDigit.ONES)
+        CalorieWidgetRenderer.refreshAll(context)
+      }
+      ACTION_SELECT_WEIGHT_TENTHS -> {
+        WidgetStateRepository(context).selectWeightDigit(WeightDigit.TENTHS)
+        CalorieWidgetRenderer.refreshAll(context)
+      }
+      ACTION_INCREASE_WEIGHT_DIGIT -> {
+        WidgetStateRepository(context).adjustSelectedWeightDigit(increase = true)
+        CalorieWidgetRenderer.refreshAll(context)
+      }
+      ACTION_DECREASE_WEIGHT_DIGIT -> {
+        WidgetStateRepository(context).adjustSelectedWeightDigit(increase = false)
+        CalorieWidgetRenderer.refreshAll(context)
+      }
       ACTION_LOG_SAMPLE_MEAL -> {
         WidgetStateRepository(context).logSampleMeal()
         CalorieWidgetRenderer.refreshAll(context)
@@ -92,6 +116,18 @@ class CalorieWidgetProvider : AppWidgetProvider() {
         "com.poissoncassant.sculptapp.widget.ACTION_RESET_TODAY"
     const val ACTION_MIDNIGHT_REFRESH =
         "com.poissoncassant.sculptapp.widget.ACTION_MIDNIGHT_REFRESH"
+    const val ACTION_SELECT_WEIGHT_HUNDREDS =
+        "com.poissoncassant.sculptapp.widget.ACTION_SELECT_WEIGHT_HUNDREDS"
+    const val ACTION_SELECT_WEIGHT_TENS =
+        "com.poissoncassant.sculptapp.widget.ACTION_SELECT_WEIGHT_TENS"
+    const val ACTION_SELECT_WEIGHT_ONES =
+        "com.poissoncassant.sculptapp.widget.ACTION_SELECT_WEIGHT_ONES"
+    const val ACTION_SELECT_WEIGHT_TENTHS =
+        "com.poissoncassant.sculptapp.widget.ACTION_SELECT_WEIGHT_TENTHS"
+    const val ACTION_INCREASE_WEIGHT_DIGIT =
+        "com.poissoncassant.sculptapp.widget.ACTION_INCREASE_WEIGHT_DIGIT"
+    const val ACTION_DECREASE_WEIGHT_DIGIT =
+        "com.poissoncassant.sculptapp.widget.ACTION_DECREASE_WEIGHT_DIGIT"
     private const val TAG = "SculptWidgetProvider"
   }
 }
