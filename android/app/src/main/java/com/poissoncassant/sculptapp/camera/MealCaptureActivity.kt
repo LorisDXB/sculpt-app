@@ -337,6 +337,7 @@ class MealCaptureActivity : ComponentActivity() {
             runOnUiThread {
               isSubmittingAnalysis = false
               val message = userFacingFailureMessage(throwable)
+              val shouldReturnToCamera = message == "No food detected in that image."
               if (shouldRenderFailureOnWidget(message)) {
                 WidgetStateRepository(this).markAnalysisFailed(message)
               } else {
@@ -344,6 +345,9 @@ class MealCaptureActivity : ComponentActivity() {
               }
               CalorieWidgetRenderer.refreshAll(this)
               Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+              if (shouldReturnToCamera) {
+                discardCurrentCapture()
+              }
               syncUiState()
             }
           }
