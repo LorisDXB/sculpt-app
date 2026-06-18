@@ -48,23 +48,38 @@ class CalorieWidgetProvider : AppWidgetProvider() {
       }
       ACTION_INCREASE_REMAINING -> {
         WidgetStateRepository(context).adjustCaloriesRemaining(increase = true)
-        CalorieWidgetRenderer.refreshAll(context)
+        CalorieWidgetRenderer.refreshAll(context, usePartialUpdate = false)
       }
       ACTION_DECREASE_REMAINING -> {
         WidgetStateRepository(context).adjustCaloriesRemaining(increase = false)
-        CalorieWidgetRenderer.refreshAll(context)
+        CalorieWidgetRenderer.refreshAll(context, usePartialUpdate = false)
       }
       ACTION_INCREASE_LAST_MEAL -> {
-        WidgetStateRepository(context).adjustLastMealCalories(increase = true)
-        CalorieWidgetRenderer.refreshAll(context)
+        val repository = WidgetStateRepository(context)
+        if (repository.readState().isWeightModeAvailable) {
+          repository.adjustSelectedWeightDigit(increase = true)
+        } else {
+          repository.adjustLastMealCalories(increase = true)
+        }
+        CalorieWidgetRenderer.refreshAll(context, usePartialUpdate = false)
       }
       ACTION_DECREASE_LAST_MEAL -> {
-        WidgetStateRepository(context).adjustLastMealCalories(increase = false)
+        val repository = WidgetStateRepository(context)
+        if (repository.readState().isWeightModeAvailable) {
+          repository.adjustSelectedWeightDigit(increase = false)
+        } else {
+          repository.adjustLastMealCalories(increase = false)
+        }
+        CalorieWidgetRenderer.refreshAll(context, usePartialUpdate = false)
+      }
+      ACTION_SELECT_WEIGHT_DIGIT -> {
+        val digitIndex = intent.getIntExtra(EXTRA_WEIGHT_DIGIT_INDEX, DEFAULT_WEIGHT_DIGIT_INDEX)
+        WidgetStateRepository(context).selectWeightDigit(digitIndex)
         CalorieWidgetRenderer.refreshAll(context)
       }
       ACTION_LOG_SAMPLE_MEAL -> {
         WidgetStateRepository(context).logSampleMeal()
-        CalorieWidgetRenderer.refreshAll(context)
+        CalorieWidgetRenderer.refreshAll(context, usePartialUpdate = false)
       }
       ACTION_RESET_TODAY -> {
         WidgetStateRepository(context).resetToday()
@@ -86,12 +101,16 @@ class CalorieWidgetProvider : AppWidgetProvider() {
         "com.poissoncassant.sculptapp.widget.ACTION_INCREASE_LAST_MEAL"
     const val ACTION_DECREASE_LAST_MEAL =
         "com.poissoncassant.sculptapp.widget.ACTION_DECREASE_LAST_MEAL"
+    const val ACTION_SELECT_WEIGHT_DIGIT =
+        "com.poissoncassant.sculptapp.widget.ACTION_SELECT_WEIGHT_DIGIT"
     const val ACTION_LOG_SAMPLE_MEAL =
         "com.poissoncassant.sculptapp.widget.ACTION_LOG_SAMPLE_MEAL"
     const val ACTION_RESET_TODAY =
         "com.poissoncassant.sculptapp.widget.ACTION_RESET_TODAY"
     const val ACTION_MIDNIGHT_REFRESH =
         "com.poissoncassant.sculptapp.widget.ACTION_MIDNIGHT_REFRESH"
+    const val EXTRA_WEIGHT_DIGIT_INDEX = "weight_digit_index"
+    private const val DEFAULT_WEIGHT_DIGIT_INDEX = 3
     private const val TAG = "SculptWidgetProvider"
   }
 }

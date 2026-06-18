@@ -15,6 +15,7 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 type SculptSettings = {
   caloriesConsumedToday: number;
   dailyCalorieTarget: number;
+  defaultWeight: number;
   hasApiKey: boolean;
   hasValidatedApiKey: boolean;
   lastValidationMessage: string | null;
@@ -26,6 +27,7 @@ type SculptSettingsModule = {
   getSettings: () => Promise<SculptSettings>;
   resetToday: () => Promise<SculptSettings>;
   setDailyCalorieTarget: (target: number) => Promise<SculptSettings>;
+  setDefaultWeight: (weight: number) => Promise<SculptSettings>;
   validateAndStoreApiKey: (apiKey: string) => Promise<SculptSettings>;
 };
 
@@ -33,6 +35,7 @@ const fallbackSettingsModule: SculptSettingsModule = {
   clearApiKey: async () => ({
     caloriesConsumedToday: 0,
     dailyCalorieTarget: 2500,
+    defaultWeight: 70,
     hasApiKey: false,
     hasValidatedApiKey: false,
     lastValidationMessage: null,
@@ -40,6 +43,7 @@ const fallbackSettingsModule: SculptSettingsModule = {
   clearAllLocalData: async () => ({
     caloriesConsumedToday: 0,
     dailyCalorieTarget: 2500,
+    defaultWeight: 70,
     hasApiKey: false,
     hasValidatedApiKey: false,
     lastValidationMessage: null,
@@ -47,6 +51,7 @@ const fallbackSettingsModule: SculptSettingsModule = {
   getSettings: async () => ({
     caloriesConsumedToday: 0,
     dailyCalorieTarget: 2500,
+    defaultWeight: 70,
     hasApiKey: false,
     hasValidatedApiKey: false,
     lastValidationMessage: null,
@@ -54,6 +59,7 @@ const fallbackSettingsModule: SculptSettingsModule = {
   resetToday: async () => ({
     caloriesConsumedToday: 0,
     dailyCalorieTarget: 2500,
+    defaultWeight: 70,
     hasApiKey: false,
     hasValidatedApiKey: false,
     lastValidationMessage: null,
@@ -61,6 +67,15 @@ const fallbackSettingsModule: SculptSettingsModule = {
   setDailyCalorieTarget: async target => ({
     caloriesConsumedToday: 0,
     dailyCalorieTarget: target,
+    defaultWeight: 70,
+    hasApiKey: false,
+    hasValidatedApiKey: false,
+    lastValidationMessage: null,
+  }),
+  setDefaultWeight: async weight => ({
+    caloriesConsumedToday: 0,
+    dailyCalorieTarget: 2500,
+    defaultWeight: weight,
     hasApiKey: false,
     hasValidatedApiKey: false,
     lastValidationMessage: null,
@@ -68,6 +83,7 @@ const fallbackSettingsModule: SculptSettingsModule = {
   validateAndStoreApiKey: async () => ({
     caloriesConsumedToday: 0,
     dailyCalorieTarget: 2500,
+    defaultWeight: 70,
     hasApiKey: true,
     hasValidatedApiKey: true,
     lastValidationMessage: 'API key validated.',
@@ -80,9 +96,11 @@ function App(): React.JSX.Element {
   const [settings, setSettings] = useState<SculptSettings | null>(null);
   const [apiKey, setApiKey] = useState('');
   const [dailyTarget, setDailyTarget] = useState('2500');
+  const [defaultWeight, setDefaultWeight] = useState('70.0');
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingKey, setIsSavingKey] = useState(false);
   const [isSavingTarget, setIsSavingTarget] = useState(false);
+  const [isSavingDefaultWeight, setIsSavingDefaultWeight] = useState(false);
   const [isRunningMaintenance, setIsRunningMaintenance] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
@@ -95,6 +113,7 @@ function App(): React.JSX.Element {
       const nextSettings = await sculptSettings.getSettings();
       setSettings(nextSettings);
       setDailyTarget(String(nextSettings.dailyCalorieTarget));
+      setDefaultWeight(formatWeight(nextSettings.defaultWeight));
       setStatusMessage(nextSettings.lastValidationMessage);
     } catch {
       setStatusMessage('Could not load settings.');
@@ -143,6 +162,28 @@ function App(): React.JSX.Element {
     }
   };
 
+  const saveDefaultWeight = async () => {
+    const parsedWeight = Number(defaultWeight);
+    if (!Number.isFinite(parsedWeight) || parsedWeight < 0) {
+      setStatusMessage('Default weight must be zero or more.');
+      return;
+    }
+
+    setIsSavingDefaultWeight(true);
+    setStatusMessage(null);
+
+    try {
+      const nextSettings = await sculptSettings.setDefaultWeight(parsedWeight);
+      setSettings(nextSettings);
+      setDefaultWeight(formatWeight(nextSettings.defaultWeight));
+      setStatusMessage('Default weight updated.');
+    } catch {
+      setStatusMessage('Could not update default weight.');
+    } finally {
+      setIsSavingDefaultWeight(false);
+    }
+  };
+
   const clearApiKey = async () => {
     setStatusMessage(null);
 
@@ -180,6 +221,7 @@ function App(): React.JSX.Element {
       setSettings(nextSettings);
       setApiKey('');
       setDailyTarget(String(nextSettings.dailyCalorieTarget));
+      setDefaultWeight(formatWeight(nextSettings.defaultWeight));
       setStatusMessage('All local data was cleared.');
     } catch {
       setStatusMessage('Could not clear local data.');
@@ -289,6 +331,36 @@ function App(): React.JSX.Element {
               <ActivityIndicator color="#ffffff" />
             ) : (
               <Text style={styles.primaryButtonText}>Save daily target</Text>
+            )}
+          </Pressable>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Default weight</Text>
+          <Text style={styles.cardBody}>
+            This seeds widget weight tracking before any meal has been logged. The current saved
+            value is <Text style={styles.inlineHighlight}>{formatWeight(settings?.defaultWeight ?? 70)} kg</Text>.
+          </Text>
+          <TextInput
+            keyboardType="decimal-pad"
+            onChangeText={setDefaultWeight}
+            placeholder="70.0"
+            placeholderTextColor="#7b8a9c"
+            style={styles.input}
+            value={defaultWeight}
+          />
+          <Pressable
+            disabled={isSavingDefaultWeight}
+            onPress={saveDefaultWeight}
+            style={({pressed}) => [
+              styles.primaryButton,
+              {backgroundColor: accentColor},
+              (pressed || isSavingDefaultWeight) && styles.buttonPressed,
+            ]}>
+            {isSavingDefaultWeight ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <Text style={styles.primaryButtonText}>Save default weight</Text>
             )}
           </Pressable>
         </View>
@@ -489,6 +561,10 @@ function withAlpha(hexColor: string, alpha: number): string {
     .toString(16)
     .padStart(2, '0');
   return `${hexColor}${alphaHex}`;
+}
+
+function formatWeight(weight: number): string {
+  return weight.toFixed(1);
 }
 
 function hsvToHex(h: number, s: number, v: number): string {

@@ -8,6 +8,9 @@ class AppConfigRepository(context: Context) {
 
   fun getApiKey(): String? = preferences.getString(KEY_OPENAI_API_KEY, null)?.takeIf { it.isNotBlank() }
 
+  fun getDefaultWeightTenths(): Int =
+      preferences.getInt(KEY_DEFAULT_WEIGHT_TENTHS, DEFAULT_WEIGHT_TENTHS).coerceIn(0, MAX_WEIGHT_TENTHS)
+
   fun hasValidatedApiKey(): Boolean =
       getApiKey() != null && preferences.getBoolean(KEY_API_KEY_VALIDATED, false)
 
@@ -32,6 +35,13 @@ class AppConfigRepository(context: Context) {
         .apply()
   }
 
+  fun saveDefaultWeightTenths(weightTenths: Int) {
+    preferences
+        .edit()
+        .putInt(KEY_DEFAULT_WEIGHT_TENTHS, weightTenths.coerceIn(0, MAX_WEIGHT_TENTHS))
+        .apply()
+  }
+
   fun clearApiKey() {
     preferences
         .edit()
@@ -50,5 +60,8 @@ class AppConfigRepository(context: Context) {
     private const val KEY_OPENAI_API_KEY = "openai_api_key"
     private const val KEY_API_KEY_VALIDATED = "openai_api_key_validated"
     private const val KEY_LAST_VALIDATION_MESSAGE = "openai_last_validation_message"
+    private const val KEY_DEFAULT_WEIGHT_TENTHS = "default_weight_tenths"
+    private const val DEFAULT_WEIGHT_TENTHS = 700
+    private const val MAX_WEIGHT_TENTHS = 9999
   }
 }

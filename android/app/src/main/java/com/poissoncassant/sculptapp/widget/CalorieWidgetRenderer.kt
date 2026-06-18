@@ -5,9 +5,6 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.os.Bundle
-import android.util.TypedValue
-import android.util.Log
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -15,9 +12,13 @@ import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Shader
+import android.os.Bundle
+import android.util.Log
+import android.util.TypedValue
 import android.widget.RemoteViews
 import com.poissoncassant.sculptapp.AddMealEntryActivity
 import com.poissoncassant.sculptapp.R
+import kotlin.math.abs
 import kotlin.math.max
 
 object CalorieWidgetRenderer {
@@ -40,6 +41,7 @@ object CalorieWidgetRenderer {
   ) {
     val state = WidgetStateRepository(context).readState()
     val lastMeal = state.lastMeal
+    val weightMode = state.isWeightModeAvailable
 
     Log.d(
         TAG,
@@ -65,6 +67,7 @@ object CalorieWidgetRenderer {
         )
         applyPresentation(context, views, presentation)
       }
+
       views.setTextViewText(
           R.id.widget_remaining_value,
           context.getString(R.string.widget_remaining_format, state.caloriesRemaining),
@@ -95,120 +98,206 @@ object CalorieWidgetRenderer {
           },
       )
 
-      if (state.analysisStatus == AnalysisStatus.ANALYZING) {
-        views.setTextViewText(R.id.widget_last_meal_name, context.getString(R.string.widget_analysis_in_progress))
-        views.setTextViewText(R.id.widget_last_meal_value, context.getString(R.string.widget_analysis_busy_hint))
-        views.setTextViewText(R.id.widget_macro_value, context.getString(R.string.widget_analysis_busy_supporting))
-        views.setViewVisibility(R.id.widget_analysis_progress, android.view.View.VISIBLE)
-        views.setViewVisibility(R.id.widget_last_meal_increase_zone, android.view.View.VISIBLE)
-        views.setViewVisibility(R.id.widget_last_meal_decrease_zone, android.view.View.VISIBLE)
-      } else if (state.analysisStatus == AnalysisStatus.ERROR) {
-        views.setTextViewText(R.id.widget_last_meal_name, context.getString(R.string.widget_analysis_error_title))
-        views.setTextViewText(R.id.widget_last_meal_value, context.getString(R.string.widget_analysis_error_secondary))
-        views.setTextViewText(
-            R.id.widget_macro_value,
-            state.analysisMessage ?: context.getString(R.string.widget_analysis_error_fallback),
-        )
-        views.setViewVisibility(R.id.widget_analysis_progress, android.view.View.GONE)
-        views.setViewVisibility(R.id.widget_last_meal_increase_zone, android.view.View.VISIBLE)
-        views.setViewVisibility(R.id.widget_last_meal_decrease_zone, android.view.View.VISIBLE)
-      } else if (lastMeal == null) {
-        views.setTextViewText(R.id.widget_last_meal_name, context.getString(R.string.widget_no_meal))
-        views.setTextViewText(R.id.widget_last_meal_value, context.getString(R.string.widget_no_meal_secondary))
-        views.setTextViewText(R.id.widget_macro_value, context.getString(R.string.widget_macro_empty))
-        views.setViewVisibility(R.id.widget_analysis_progress, android.view.View.GONE)
-        views.setViewVisibility(R.id.widget_last_meal_increase_zone, android.view.View.INVISIBLE)
-        views.setViewVisibility(R.id.widget_last_meal_decrease_zone, android.view.View.INVISIBLE)
-      } else {
-        views.setTextViewText(R.id.widget_last_meal_name, lastMeal.mealName)
-        views.setTextViewText(
-            R.id.widget_last_meal_value,
-            context.getString(R.string.widget_last_meal_format, lastMeal.calories),
-        )
-        views.setTextViewText(
-            R.id.widget_macro_value,
-            context.getString(
-                R.string.widget_macro_format,
-                lastMeal.proteinGrams,
-                lastMeal.carbsGrams,
-                lastMeal.fatGrams,
-            ),
-        )
-        views.setViewVisibility(R.id.widget_analysis_progress, android.view.View.GONE)
-        views.setViewVisibility(R.id.widget_last_meal_increase_zone, android.view.View.VISIBLE)
-        views.setViewVisibility(R.id.widget_last_meal_decrease_zone, android.view.View.VISIBLE)
-      }
+      renderRightPanel(context, views, state, weightMode, lastMeal)
+      bindTapTargets(context, views)
 
-      views.setOnClickPendingIntent(R.id.widget_open_app_button, buildOpenAppPendingIntent(context))
-      views.setOnClickPendingIntent(
-          R.id.widget_remaining_increase_zone,
-          buildBroadcastPendingIntent(
-              context,
-              REQUEST_INCREASE_REMAINING,
-              CalorieWidgetProvider.ACTION_INCREASE_REMAINING,
-          ),
-      )
-      views.setOnClickPendingIntent(
-          R.id.widget_remaining_dead_zone,
-          buildBroadcastPendingIntent(
-              context,
-              REQUEST_NO_OP,
-              CalorieWidgetProvider.ACTION_NO_OP,
-          ),
-      )
-      views.setOnClickPendingIntent(
-          R.id.widget_remaining_decrease_zone,
-          buildBroadcastPendingIntent(
-              context,
-              REQUEST_DECREASE_REMAINING,
-              CalorieWidgetProvider.ACTION_DECREASE_REMAINING,
-          ),
-      )
-      views.setOnClickPendingIntent(
-          R.id.widget_center_dead_zone,
-          buildBroadcastPendingIntent(
-              context,
-              REQUEST_NO_OP,
-              CalorieWidgetProvider.ACTION_NO_OP,
-          ),
-      )
-      views.setOnClickPendingIntent(
-          R.id.widget_last_meal_increase_zone,
-          buildBroadcastPendingIntent(
-              context,
-              REQUEST_INCREASE_LAST_MEAL,
-              CalorieWidgetProvider.ACTION_INCREASE_LAST_MEAL,
-          ),
-      )
-      views.setOnClickPendingIntent(
-          R.id.widget_last_meal_dead_zone,
-          buildBroadcastPendingIntent(
-              context,
-              REQUEST_NO_OP,
-              CalorieWidgetProvider.ACTION_NO_OP,
-          ),
-      )
-      views.setOnClickPendingIntent(
-          R.id.widget_last_meal_decrease_zone,
-          buildBroadcastPendingIntent(
-              context,
-              REQUEST_DECREASE_LAST_MEAL,
-              CalorieWidgetProvider.ACTION_DECREASE_LAST_MEAL,
-          ),
-      )
-      views.setOnClickPendingIntent(
-          R.id.widget_step_button,
-          buildBroadcastPendingIntent(
-              context,
-              REQUEST_CYCLE_STEP,
-              CalorieWidgetProvider.ACTION_CYCLE_STEP,
-          ),
-      )
       if (usePartialUpdate) {
         appWidgetManager.partiallyUpdateAppWidget(appWidgetId, views)
       } else {
         appWidgetManager.updateAppWidget(appWidgetId, views)
       }
+    }
+  }
+
+  private fun renderRightPanel(
+      context: Context,
+      views: RemoteViews,
+      state: CalorieWidgetState,
+      weightMode: Boolean,
+      lastMeal: LastMealState?,
+  ) {
+    if (weightMode) {
+      views.setTextViewText(R.id.widget_last_meal_label, context.getString(R.string.widget_weight_label))
+      views.setInt(R.id.widget_last_meal_label, "setGravity", android.view.Gravity.END)
+      views.setViewVisibility(R.id.widget_last_meal_content_container, android.view.View.INVISIBLE)
+      views.setViewVisibility(R.id.widget_weight_mode_overlay, android.view.View.VISIBLE)
+      views.setViewVisibility(R.id.widget_analysis_progress, android.view.View.GONE)
+      views.setViewVisibility(R.id.widget_step_button, android.view.View.GONE)
+      renderWeightMode(context, views, state.weightPanel)
+      return
+    }
+
+    views.setTextViewText(R.id.widget_last_meal_label, context.getString(R.string.widget_last_meal_label))
+    views.setInt(R.id.widget_last_meal_label, "setGravity", android.view.Gravity.END)
+    views.setViewVisibility(R.id.widget_last_meal_content_container, android.view.View.VISIBLE)
+    views.setViewVisibility(R.id.widget_weight_mode_overlay, android.view.View.GONE)
+    views.setViewVisibility(R.id.widget_step_button, android.view.View.VISIBLE)
+
+    if (state.analysisStatus == AnalysisStatus.ANALYZING) {
+      views.setTextViewText(R.id.widget_last_meal_name, context.getString(R.string.widget_analysis_in_progress))
+      views.setTextViewText(R.id.widget_last_meal_value, context.getString(R.string.widget_analysis_busy_hint))
+      views.setTextViewText(R.id.widget_macro_value, context.getString(R.string.widget_analysis_busy_supporting))
+      views.setViewVisibility(R.id.widget_analysis_progress, android.view.View.VISIBLE)
+      views.setViewVisibility(R.id.widget_last_meal_increase_zone, android.view.View.VISIBLE)
+      views.setViewVisibility(R.id.widget_last_meal_decrease_zone, android.view.View.VISIBLE)
+    } else if (state.analysisStatus == AnalysisStatus.ERROR) {
+      views.setTextViewText(R.id.widget_last_meal_name, context.getString(R.string.widget_analysis_error_title))
+      views.setTextViewText(R.id.widget_last_meal_value, context.getString(R.string.widget_analysis_error_secondary))
+      views.setTextViewText(
+          R.id.widget_macro_value,
+          state.analysisMessage ?: context.getString(R.string.widget_analysis_error_fallback),
+      )
+      views.setViewVisibility(R.id.widget_analysis_progress, android.view.View.GONE)
+      views.setViewVisibility(R.id.widget_last_meal_increase_zone, android.view.View.VISIBLE)
+      views.setViewVisibility(R.id.widget_last_meal_decrease_zone, android.view.View.VISIBLE)
+    } else if (lastMeal == null) {
+      views.setTextViewText(R.id.widget_last_meal_name, context.getString(R.string.widget_no_meal))
+      views.setTextViewText(R.id.widget_last_meal_value, context.getString(R.string.widget_no_meal_secondary))
+      views.setTextViewText(R.id.widget_macro_value, context.getString(R.string.widget_macro_empty))
+      views.setViewVisibility(R.id.widget_analysis_progress, android.view.View.GONE)
+      views.setViewVisibility(R.id.widget_last_meal_increase_zone, android.view.View.INVISIBLE)
+      views.setViewVisibility(R.id.widget_last_meal_decrease_zone, android.view.View.INVISIBLE)
+    } else {
+      views.setTextViewText(R.id.widget_last_meal_name, lastMeal.mealName)
+      views.setTextViewText(
+          R.id.widget_last_meal_value,
+          context.getString(R.string.widget_last_meal_format, lastMeal.calories),
+      )
+      views.setTextViewText(
+          R.id.widget_macro_value,
+          context.getString(
+              R.string.widget_macro_format,
+              lastMeal.proteinGrams,
+              lastMeal.carbsGrams,
+              lastMeal.fatGrams,
+          ),
+      )
+      views.setViewVisibility(R.id.widget_analysis_progress, android.view.View.GONE)
+      views.setViewVisibility(R.id.widget_last_meal_increase_zone, android.view.View.VISIBLE)
+      views.setViewVisibility(R.id.widget_last_meal_decrease_zone, android.view.View.VISIBLE)
+    }
+  }
+
+  private fun renderWeightMode(
+      context: Context,
+      views: RemoteViews,
+      weightPanel: WeightPanelState,
+  ) {
+    val digits = weightDigits(weightPanel.displayedWeightTenths)
+    val digitIds =
+        intArrayOf(
+            R.id.widget_weight_digit_0,
+            R.id.widget_weight_digit_1,
+            R.id.widget_weight_digit_2,
+            R.id.widget_weight_digit_3,
+        )
+
+    digitIds.forEachIndexed { index, viewId ->
+      views.setTextViewText(viewId, digits[index])
+      views.setInt(
+          viewId,
+          "setBackgroundResource",
+          if (weightPanel.selectedDigitIndex == index) {
+            R.drawable.widget_weight_digit_selected_background
+          } else {
+            R.drawable.widget_weight_digit_unselected_background
+          },
+      )
+      views.setTextColor(viewId, UNSELECTED_WEIGHT_DIGIT_COLOR)
+    }
+
+    views.setTextViewText(
+        R.id.widget_weight_vs_yesterday,
+        comparisonText(
+            context = context,
+            labelRes = R.string.widget_weight_compare_yesterday,
+            comparisonTenths = weightPanel.comparisonToYesterdayTenths,
+        ),
+    )
+    views.setTextColor(R.id.widget_weight_vs_yesterday, comparisonColor(weightPanel.comparisonToYesterdayTenths))
+    views.setTextViewText(
+        R.id.widget_weight_vs_last_week,
+        comparisonText(
+            context = context,
+            labelRes = R.string.widget_weight_compare_last_week,
+            comparisonTenths = weightPanel.comparisonToLastWeekTenths,
+        ),
+    )
+    views.setTextColor(R.id.widget_weight_vs_last_week, comparisonColor(weightPanel.comparisonToLastWeekTenths))
+  }
+
+  private fun bindTapTargets(context: Context, views: RemoteViews) {
+    views.setOnClickPendingIntent(R.id.widget_open_app_button, buildOpenAppPendingIntent(context))
+    views.setOnClickPendingIntent(
+        R.id.widget_remaining_increase_zone,
+        buildBroadcastPendingIntent(
+            context,
+            REQUEST_INCREASE_REMAINING,
+            CalorieWidgetProvider.ACTION_INCREASE_REMAINING,
+        ),
+    )
+    views.setOnClickPendingIntent(
+        R.id.widget_remaining_dead_zone,
+        buildBroadcastPendingIntent(
+            context,
+            REQUEST_NO_OP,
+            CalorieWidgetProvider.ACTION_NO_OP,
+        ),
+    )
+    views.setOnClickPendingIntent(
+        R.id.widget_remaining_decrease_zone,
+        buildBroadcastPendingIntent(
+            context,
+            REQUEST_DECREASE_REMAINING,
+            CalorieWidgetProvider.ACTION_DECREASE_REMAINING,
+        ),
+    )
+    views.setOnClickPendingIntent(
+        R.id.widget_center_dead_zone,
+        buildBroadcastPendingIntent(
+            context,
+            REQUEST_NO_OP,
+            CalorieWidgetProvider.ACTION_NO_OP,
+        ),
+    )
+    views.setOnClickPendingIntent(
+        R.id.widget_last_meal_increase_zone,
+        buildBroadcastPendingIntent(
+            context,
+            REQUEST_INCREASE_LAST_MEAL,
+            CalorieWidgetProvider.ACTION_INCREASE_LAST_MEAL,
+        ),
+    )
+    views.setOnClickPendingIntent(
+        R.id.widget_last_meal_dead_zone,
+        buildBroadcastPendingIntent(
+            context,
+            REQUEST_NO_OP,
+            CalorieWidgetProvider.ACTION_NO_OP,
+        ),
+    )
+    views.setOnClickPendingIntent(
+        R.id.widget_last_meal_decrease_zone,
+        buildBroadcastPendingIntent(
+            context,
+            REQUEST_DECREASE_LAST_MEAL,
+            CalorieWidgetProvider.ACTION_DECREASE_LAST_MEAL,
+        ),
+    )
+    views.setOnClickPendingIntent(
+        R.id.widget_step_button,
+        buildBroadcastPendingIntent(
+            context,
+            REQUEST_CYCLE_STEP,
+            CalorieWidgetProvider.ACTION_CYCLE_STEP,
+        ),
+    )
+
+    WEIGHT_DIGIT_VIEW_IDS.forEachIndexed { index, viewId ->
+      views.setOnClickPendingIntent(
+          viewId,
+          buildWeightDigitSelectionPendingIntent(context, index),
+      )
     }
   }
 
@@ -234,6 +323,23 @@ object CalorieWidgetRenderer {
     return PendingIntent.getBroadcast(
         context,
         requestCode,
+        intent,
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
+  }
+
+  private fun buildWeightDigitSelectionPendingIntent(
+      context: Context,
+      digitIndex: Int,
+  ): PendingIntent {
+    val intent =
+        Intent(context, CalorieWidgetProvider::class.java).apply {
+          action = CalorieWidgetProvider.ACTION_SELECT_WEIGHT_DIGIT
+          putExtra(CalorieWidgetProvider.EXTRA_WEIGHT_DIGIT_INDEX, digitIndex)
+        }
+    return PendingIntent.getBroadcast(
+        context,
+        REQUEST_SELECT_WEIGHT_DIGIT_BASE + digitIndex,
         intent,
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
@@ -274,6 +380,10 @@ object CalorieWidgetRenderer {
     views.setTextViewTextSize(R.id.widget_last_meal_name, TypedValue.COMPLEX_UNIT_SP, presentation.mealNameSp)
     views.setTextViewTextSize(R.id.widget_last_meal_value, TypedValue.COMPLEX_UNIT_SP, presentation.mealValueSp)
     views.setTextViewTextSize(R.id.widget_macro_value, TypedValue.COMPLEX_UNIT_SP, presentation.macroSp)
+    views.setTextViewTextSize(R.id.widget_weight_vs_yesterday, TypedValue.COMPLEX_UNIT_SP, presentation.weightComparisonSp)
+    views.setTextViewTextSize(R.id.widget_weight_vs_last_week, TypedValue.COMPLEX_UNIT_SP, presentation.weightComparisonSp)
+    WEIGHT_DIGIT_VIEW_IDS.forEach { views.setTextViewTextSize(it, TypedValue.COMPLEX_UNIT_SP, presentation.weightDigitSp) }
+    views.setTextViewTextSize(R.id.widget_weight_separator, TypedValue.COMPLEX_UNIT_SP, presentation.weightDigitSp - 2f)
     views.setTextViewTextSize(R.id.widget_open_app_button, TypedValue.COMPLEX_UNIT_SP, presentation.buttonSp)
     views.setTextViewTextSize(R.id.widget_step_button, TypedValue.COMPLEX_UNIT_SP, presentation.buttonSp)
     views.setInt(R.id.widget_section_label, "setMaxLines", presentation.labelMaxLines)
@@ -283,6 +393,8 @@ object CalorieWidgetRenderer {
     views.setInt(R.id.widget_last_meal_name, "setMaxLines", presentation.lastMealNameMaxLines)
     views.setInt(R.id.widget_last_meal_value, "setMaxLines", presentation.secondaryMaxLines)
     views.setInt(R.id.widget_macro_value, "setMaxLines", presentation.supportingMaxLines)
+    views.setInt(R.id.widget_weight_vs_yesterday, "setMaxLines", 1)
+    views.setInt(R.id.widget_weight_vs_last_week, "setMaxLines", 1)
 
     views.setViewPadding(
         R.id.widget_bottom_actions,
@@ -324,6 +436,8 @@ object CalorieWidgetRenderer {
               mealValueSp = 23f,
               metaSp = 12f,
               macroSp = 12f,
+              weightDigitSp = 22f,
+              weightComparisonSp = 11f,
               metaMaxLines = 2,
               lastMealNameMaxLines = 2,
               secondaryMaxLines = 1,
@@ -345,6 +459,8 @@ object CalorieWidgetRenderer {
               mealValueSp = 12f,
               metaSp = 9f,
               macroSp = 8f,
+              weightDigitSp = 16f,
+              weightComparisonSp = 8f,
               metaMaxLines = 2,
               lastMealNameMaxLines = 2,
               secondaryMaxLines = 1,
@@ -366,6 +482,8 @@ object CalorieWidgetRenderer {
               mealValueSp = 22f,
               metaSp = 12f,
               macroSp = 12f,
+              weightDigitSp = 20f,
+              weightComparisonSp = 10f,
               metaMaxLines = 2,
               lastMealNameMaxLines = 2,
               secondaryMaxLines = 1,
@@ -420,6 +538,43 @@ object CalorieWidgetRenderer {
     return bitmap
   }
 
+  private fun comparisonText(
+      context: Context,
+      labelRes: Int,
+      comparisonTenths: Int?,
+  ): String {
+    val value =
+        comparisonTenths?.let {
+          val sign = when {
+            it > 0 -> "+"
+            it < 0 -> "-"
+            else -> ""
+          }
+          "$sign${formatTenths(abs(it))}"
+        } ?: context.getString(R.string.widget_weight_compare_missing)
+    return context.getString(labelRes, value)
+  }
+
+  private fun comparisonColor(comparisonTenths: Int?): Int =
+      when {
+        comparisonTenths == null || comparisonTenths == 0 -> NEUTRAL_COMPARISON_COLOR
+        comparisonTenths > 0 -> GAIN_COMPARISON_COLOR
+        else -> LOSS_COMPARISON_COLOR
+      }
+
+  private fun weightDigits(weightTenths: Int): List<String> {
+    val clamped = weightTenths.coerceIn(0, MAX_WEIGHT_TENTHS)
+    val wholeNumber = clamped / 10
+    return listOf(
+        ((wholeNumber / 100) % 10).toString(),
+        ((wholeNumber / 10) % 10).toString(),
+        (wholeNumber % 10).toString(),
+        (clamped % 10).toString(),
+    )
+  }
+
+  private fun formatTenths(value: Int): String = "${value / 10}.${value % 10}"
+
   private fun blendColors(from: Int, to: Int, ratio: Float): Int {
     val clamped = ratio.coerceIn(0f, 1f)
     val inverse = 1f - clamped
@@ -444,6 +599,8 @@ object CalorieWidgetRenderer {
       val mealValueSp: Float,
       val metaSp: Float,
       val macroSp: Float,
+      val weightDigitSp: Float,
+      val weightComparisonSp: Float,
       val metaMaxLines: Int,
       val lastMealNameMaxLines: Int,
       val secondaryMaxLines: Int,
@@ -454,6 +611,14 @@ object CalorieWidgetRenderer {
       val bottomActionsMarginTopDp: Int,
   )
 
+  private val WEIGHT_DIGIT_VIEW_IDS =
+      intArrayOf(
+          R.id.widget_weight_digit_0,
+          R.id.widget_weight_digit_1,
+          R.id.widget_weight_digit_2,
+          R.id.widget_weight_digit_3,
+      )
+
   private const val TAG = "SculptWidgetRenderer"
   private const val REQUEST_OPEN_APP = 1001
   private const val REQUEST_CYCLE_STEP = 1002
@@ -462,4 +627,10 @@ object CalorieWidgetRenderer {
   private const val REQUEST_INCREASE_LAST_MEAL = 1005
   private const val REQUEST_DECREASE_LAST_MEAL = 1006
   private const val REQUEST_NO_OP = 1007
+  private const val REQUEST_SELECT_WEIGHT_DIGIT_BASE = 1100
+  private const val MAX_WEIGHT_TENTHS = 9999
+  private val GAIN_COMPARISON_COLOR = Color.parseColor("#F87171")
+  private val LOSS_COMPARISON_COLOR = Color.parseColor("#4ADE80")
+  private val NEUTRAL_COMPARISON_COLOR = Color.parseColor("#D9FFFFFF")
+  private val UNSELECTED_WEIGHT_DIGIT_COLOR = Color.WHITE
 }

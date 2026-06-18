@@ -4,149 +4,236 @@
 
 This plan covers:
 
-- Widget structure relayout and normalization
-- Always-visible stats across widget sizes
-- Reset color refresh fix
-- French support for speech recognition and capture copy
-- Camera reopen behavior after leaving an unsent photo preview
+- Weight tracking in the widget right panel
+- Digit-based weight editing before any meals are logged for the day
+- Fallback display using yesterday's weight or the app default weight
+- Weight comparisons versus yesterday and last week
+- App settings support for a default weight
 
-This plan does **not** include weight-related changes.
+This plan assumes:
+
+- The right panel shows weight tracking only when no meals have been entered today
+- Once a meal exists for the day, the right panel returns to the normal last-meal display and weight editing is no longer accessible
+- Only numeric digits are editable
+- Editable digits wrap from `9 -> 0` and `0 -> 9`
 
 ## Current Findings
 
-- The current widget already uses a vertical root with a content area and a bottom actions row.
-- The current visible content columns are effectively split evenly, not as `40 / 20 / 40`.
-- The center no-tap area exists today as part of a separate overlayed interaction layer, not as a clearly mirrored structural content section.
-- Small widget presentations currently hide some stats, especially total macros.
-- Reset already updates state and calls widget refresh, but the widget background color is only regenerated during a full update, which likely explains the stale color after reset.
-- The `Step` button is already implemented and should remain unchanged.
-- French resources do not exist yet.
-- The meal capture screen restores preview state from `savedInstanceState`, which is likely the reason an unsent preview can come back instead of reopening the live camera flow.
+- Weight tracking is not implemented yet.
+- The widget state currently persists calorie, macro, analysis, and last-meal data in `WidgetStateRepository`.
+- The app config currently stores API-key-related settings only in `AppConfigRepository`.
+- The widget right panel currently renders:
+  - analysis state
+  - error state
+  - empty no-meal state
+  - last meal details
+- The current empty no-meal state is the place where weight tracking should appear.
 
-## Widget Relayout Proposal
+## Widget Behavior Rules
 
-HTML-style structure for approval:
+### Right Panel Mode
+
+- If **no meals were entered today**:
+  - the right panel shows weight tracking
+  - the user can select a digit and edit the weight
+- If **at least one meal was entered today**:
+  - the right panel shows the normal last meal view
+  - weight tracking is not accessible
+
+### Weight Source Fallback
+
+When no meals were entered today, the displayed weight should resolve in this order:
+
+1. today's saved weight, if one exists
+2. yesterday's weight, if one exists
+3. the default weight from app settings
+
+## Weight Tracking Structure Proposal
+
+HTML-style structure for the right panel in no-meal mode:
 
 ```html
-<widget-root style="display:flex; flex-direction:column;">
-  <content-section style="display:flex; flex-direction:row; flex:1;">
-    <left-section style="width:40%; display:flex; flex-direction:column;">
-      <left-label>Remaining</left-label>
-      <left-primary-stat>#### kcal</left-primary-stat>
-      <left-secondary-stat>#### eaten / #### target</left-secondary-stat>
-      <left-supporting-stat>P ##g  C ##g  F ##g</left-supporting-stat>
-    </left-section>
+<right-section style="width:40%; display:flex; flex-direction:column;">
+  <right-label>Weight</right-label>
 
-    <middle-spacer style="width:20%;"></middle-spacer>
+  <weight-row>
+    <digit-button>7</digit-button>
+    <digit-button>2</digit-button>
+    <separator>.</separator>
+    <digit-button>4</digit-button>
+  </weight-row>
 
-    <right-section style="width:40%; display:flex; flex-direction:column;">
-      <right-label>Last meal</right-label>
-      <right-primary-stat>Meal name</right-primary-stat>
-      <right-secondary-stat>#### kcal</right-secondary-stat>
-      <right-supporting-stat>P ##g  C ##g  F ##g</right-supporting-stat>
-    </right-section>
-  </content-section>
-
-  <navigation-section style="display:flex; flex-direction:row;">
-    <nav-button>Add meal</nav-button>
-    <nav-button>Step ##</nav-button>
-  </navigation-section>
-</widget-root>
+  <comparison-line>vs yesterday: -0.3</comparison-line>
+  <comparison-line>vs last week: +0.8</comparison-line>
+</right-section>
 ```
 
-Interaction model that will sit on top of this structure:
+Interaction model:
 
-- Left section tap zones keep calorie target adjustment behavior.
-- Middle spacer stays intentionally inert to reduce accidental taps.
-- Right section tap zones keep last meal adjustment behavior.
-- Bottom navigation keeps `Add meal` and `Step`.
+- Tapping a digit selects it
+- The selected digit becomes the active edit target
+- The existing right-side increase/decrease tap zones modify only the selected digit
+- Digits wrap between `0` and `9`
+- The decimal separator is visual only and not editable
 
 ## Implementation Steps
 
-### 1. Rebuild the widget layout around the approved structure
+### 1. Add default weight to app settings
 
 Files:
 
-- `android/app/src/main/res/layout/calorie_widget.xml`
-
-Work:
-
-- Refactor the layout so the visual structure clearly matches:
-  - root column
-  - top content row
-  - bottom navigation row
-- Change the content row weights to `40 / 20 / 40`.
-- Keep the center section empty and intentionally non-interactive.
-- Preserve the bottom row buttons and the existing `Step` control.
-- Keep adjustment zones, but align them with the normalized left and right sections instead of the current looser overlay arrangement.
-
-### 2. Normalize section layout so all content remains visible
-
-Files:
-
-- `android/app/src/main/res/layout/calorie_widget.xml`
-- `android/app/src/main/java/com/poissoncassant/sculptapp/widget/CalorieWidgetRenderer.kt`
-
-Work:
-
-- Normalize both left and right sections so each has:
-  - label
-  - primary stat
-  - secondary stat
-  - supporting stat
-- Use autosizing and tighter presentation rules rather than hiding stats.
-- Review vertical spacing, max lines, and text sizes for compact, medium, and large widget buckets.
-- Remove current logic that hides total macros for smaller widget sizes.
-
-### 3. Ensure stats always appear at every supported size
-
-Files:
-
-- `android/app/src/main/java/com/poissoncassant/sculptapp/widget/CalorieWidgetRenderer.kt`
-
-Work:
-
-- Remove the current `showTotalMacros = false` compact-mode behavior.
-- Keep both left-side and right-side supporting stats visible in all widget presentations.
-- Adjust presentation presets so compact widgets shrink text and spacing before dropping information.
-- Recheck last meal label, meal name, calories, and macro text for truncation risk.
-
-### 4. Fix stale widget colors after reset
-
-Files:
-
-- `android/app/src/main/java/com/poissoncassant/sculptapp/widget/CalorieWidgetRenderer.kt`
+- `android/app/src/main/java/com/poissoncassant/sculptapp/config/AppConfigRepository.kt`
 - `android/app/src/main/java/com/poissoncassant/sculptapp/bridge/SculptSettingsModule.kt`
-- `android/app/src/main/java/com/poissoncassant/sculptapp/widget/CalorieWidgetProvider.kt`
+- `App.tsx`
 
 Work:
 
-- Force a full widget redraw after reset so the background bitmap is regenerated.
-- Verify that the reset path from the React Native settings screen and the reset path from widget actions both trigger the same full visual refresh behavior.
-- Confirm that the progress-derived accent color updates immediately when `caloriesConsumedToday` returns to `0`.
+- Add default weight persistence to app config storage.
+- Expose default weight through the native settings bridge.
+- Add a settings input in the app so the user can define the default weight.
+- Keep this setting independent from calorie target and API-key settings.
 
-### 6. Add French support for meal capture speech flow
+### 2. Add weight history to widget state
 
 Files:
 
-- `android/app/src/main/java/com/poissoncassant/sculptapp/camera/MealCaptureActivity.kt`
+- `android/app/src/main/java/com/poissoncassant/sculptapp/widget/CalorieWidgetState.kt`
+- `android/app/src/main/java/com/poissoncassant/sculptapp/widget/WidgetStateRepository.kt`
+
+Work:
+
+- Extend widget state with weight-related data:
+  - today's weight
+  - selected digit index
+  - yesterday comparison
+  - last-week comparison
+- Persist daily weight history keyed by date.
+- Preserve weight history across day rollover.
+- Reset only meal/calorie daily values on date rollover, not historical weight entries.
+
+### 3. Define a stable weight format
+
+Files:
+
+- `android/app/src/main/java/com/poissoncassant/sculptapp/widget/WidgetStateRepository.kt`
+- `android/app/src/main/java/com/poissoncassant/sculptapp/widget/CalorieWidgetRenderer.kt`
+
+Work:
+
+- Choose and implement one fixed display format for the widget weight.
+- Recommended internal structure:
+  - store a numeric value
+  - render it into fixed editable digits plus a fixed decimal separator
+- Only digits are editable.
+- The separator remains static and non-selectable.
+
+Note:
+
+- The exact digit format still needs final confirmation during implementation if not already implied by design.
+
+### 4. Replace the current no-meal right-panel state with weight tracking
+
+Files:
+
+- `android/app/src/main/res/layout/calorie_widget.xml`
+- `android/app/src/main/java/com/poissoncassant/sculptapp/widget/CalorieWidgetRenderer.kt`
 - `android/app/src/main/res/values/strings.xml`
 - `android/app/src/main/res/values-fr/strings.xml`
 
 Work:
 
-- Update the speech recognizer configuration to support French instead of english.
+- Remove the current “no meal entered” right-panel empty state.
+- Render a weight panel instead when `lastMeal == null`.
+- Show:
+  - weight label
+  - per-digit editable row
+  - comparison versus yesterday
+  - comparison versus last week
+- Keep the existing last-meal UI untouched for days where a meal has been logged.
+
+### 5. Add digit selection in the widget
+
+Files:
+
+- `android/app/src/main/res/layout/calorie_widget.xml`
+- `android/app/src/main/java/com/poissoncassant/sculptapp/widget/CalorieWidgetRenderer.kt`
+- `android/app/src/main/java/com/poissoncassant/sculptapp/widget/CalorieWidgetProvider.kt`
+
+Work:
+
+- Add clickable targets for each editable digit.
+- Add provider actions for selecting each digit.
+- Add visual feedback for the selected digit.
+- Default to a sensible active digit if none is selected yet.
+
+### 6. Reuse the current right-side increase/decrease zones for weight editing
+
+Files:
+
+- `android/app/src/main/java/com/poissoncassant/sculptapp/widget/WidgetStateRepository.kt`
+- `android/app/src/main/java/com/poissoncassant/sculptapp/widget/CalorieWidgetProvider.kt`
+
+Work:
+
+- Keep the existing right-side plus/minus zones.
+- Change their behavior conditionally:
+  - if a meal exists today, they still adjust last meal calories
+  - if no meal exists today, they edit the selected weight digit instead
+- Wrap digit changes across `0..9`.
+
+### 7. Add weight comparison logic
+
+Files:
+
+- `android/app/src/main/java/com/poissoncassant/sculptapp/widget/WidgetStateRepository.kt`
+- `android/app/src/main/java/com/poissoncassant/sculptapp/widget/CalorieWidgetRenderer.kt`
+
+Work:
+
+- Compute:
+  - change versus yesterday
+  - change versus last week
+- Render directional copy clearly:
+  - increase
+  - decrease
+  - unchanged
+- Define fallback rendering when comparison history is missing.
+
+### 8. Preserve correct mode transitions
+
+Files:
+
+- `android/app/src/main/java/com/poissoncassant/sculptapp/widget/WidgetStateRepository.kt`
+- `android/app/src/main/java/com/poissoncassant/sculptapp/widget/CalorieWidgetRenderer.kt`
+
+Work:
+
+- Ensure the panel switches automatically:
+  - no meal today -> weight mode
+  - meal logged today -> last-meal mode
+- Ensure any saved weight for the day remains persisted even after a meal is logged.
+- Ensure the weight panel becomes available again on the next day before meals are entered.
 
 ## Verification Checklist
 
-- Widget layout visually matches the approved `40 / 20 / 40` structure.
-- Left and right sections feel normalized and balanced.
-- All stats remain visible on compact, medium, and large widget sizes.
-- Reset updates widget colors immediately.
-- French voice capture works as expected.
+- No-meal day shows weight tracking instead of no-meal text.
+- Meal-logged day shows the normal last meal panel.
+- Tapping a digit selects it visually.
+- Right-side plus/minus changes only the selected digit.
+- Digits wrap correctly across `0` and `9`.
+- Yesterday fallback works when today has no saved weight.
+- Default-weight fallback works when neither today nor yesterday has a saved weight.
+- Comparison values versus yesterday and last week display correctly.
+- Day rollover preserves weight history while resetting daily meal/calorie state.
+- Layout remains readable across compact, medium, and large widget sizes.
 
-## Open Approval Point
+## Open Note
 
-Please confirm the HTML-style widget structure above.
+The remaining implementation detail to lock during coding is the exact visible weight format, because it determines the number of digit slots:
 
-If approved, implementation should follow that structure exactly, with tap zones layered onto the left and right sections and an inert middle spacer.
+- `72.4`
+- `072.4`
+- `72,4`
+- another fixed pattern
+
+Everything else is structurally clear from the current requirements.

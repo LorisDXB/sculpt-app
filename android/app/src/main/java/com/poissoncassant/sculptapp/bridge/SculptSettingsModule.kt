@@ -78,6 +78,22 @@ class SculptSettingsModule(reactContext: ReactApplicationContext) :
   }
 
   @ReactMethod
+  fun setDefaultWeight(weight: Double, promise: Promise) {
+    try {
+      if (!weight.isFinite() || weight < 0) {
+        promise.reject("default_weight_invalid", "Default weight must be a positive number.")
+        return
+      }
+
+      AppConfigRepository(reactApplicationContext).saveDefaultWeightTenths((weight * 10.0).toInt())
+      CalorieWidgetRenderer.refreshAll(reactApplicationContext)
+      promise.resolve(buildSettingsMap())
+    } catch (exception: Exception) {
+      promise.reject("default_weight_update_failed", exception)
+    }
+  }
+
+  @ReactMethod
   fun clearAllLocalData(promise: Promise) {
     try {
       WidgetStateRepository(reactApplicationContext).clearAllLocalData()
@@ -96,6 +112,7 @@ class SculptSettingsModule(reactContext: ReactApplicationContext) :
 
         putInt("dailyCalorieTarget", widgetState.dailyCalorieTarget)
         putInt("caloriesConsumedToday", widgetState.caloriesConsumedToday)
+        putDouble("defaultWeight", config.getDefaultWeightTenths() / 10.0)
         putBoolean("hasValidatedApiKey", config.hasValidatedApiKey())
         putBoolean("hasApiKey", config.getApiKey() != null)
         putString("lastValidationMessage", config.getLastValidationMessage())
