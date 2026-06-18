@@ -1,5 +1,7 @@
 package com.poissoncassant.sculptapp.widget
 
+import com.poissoncassant.sculptapp.steps.StepTrackingStatus
+
 data class CalorieWidgetState(
     val date: String,
     val dailyCalorieTarget: Int,
@@ -12,6 +14,7 @@ data class CalorieWidgetState(
     val analysisStatus: AnalysisStatus,
     val analysisMessage: String?,
     val weightPanel: WeightPanelState,
+    val stepPanel: StepPanelState,
 ) {
   val caloriesRemaining: Int
     get() = dailyCalorieTarget - caloriesConsumedToday
@@ -49,3 +52,9 @@ enum class WeightSource {
   YESTERDAY,
   DEFAULT,
 }
+
+data class StepPanelState(
+    val todaySteps: Int?,
+    val lastUpdatedAtMillis: Long?,
+    val status: StepTrackingStatus,
+)

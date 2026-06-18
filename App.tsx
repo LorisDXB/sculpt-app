@@ -2,7 +2,9 @@ import React, {useEffect, useState} from 'react';
 import {
   ActivityIndicator,
   NativeModules,
+  PermissionsAndroid,
   Pressable,
+  Platform,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -19,15 +21,21 @@ type SculptSettings = {
   hasApiKey: boolean;
   hasValidatedApiKey: boolean;
   lastValidationMessage: string | null;
+  stepPollingMinutes: number;
+  stepSensorAvailable: boolean;
+  stepsPermissionGranted: boolean;
+  todaySteps: number;
 };
 
 type SculptSettingsModule = {
   clearApiKey: () => Promise<SculptSettings>;
   clearAllLocalData: () => Promise<SculptSettings>;
   getSettings: () => Promise<SculptSettings>;
+  refreshSteps: () => Promise<SculptSettings>;
   resetToday: () => Promise<SculptSettings>;
   setDailyCalorieTarget: (target: number) => Promise<SculptSettings>;
   setDefaultWeight: (weight: number) => Promise<SculptSettings>;
+  setStepPollingMinutes: (minutes: number) => Promise<SculptSettings>;
   validateAndStoreApiKey: (apiKey: string) => Promise<SculptSettings>;
 };
 
@@ -39,6 +47,10 @@ const fallbackSettingsModule: SculptSettingsModule = {
     hasApiKey: false,
     hasValidatedApiKey: false,
     lastValidationMessage: null,
+    stepPollingMinutes: 30,
+    stepSensorAvailable: true,
+    stepsPermissionGranted: true,
+    todaySteps: 0,
   }),
   clearAllLocalData: async () => ({
     caloriesConsumedToday: 0,
@@ -47,6 +59,10 @@ const fallbackSettingsModule: SculptSettingsModule = {
     hasApiKey: false,
     hasValidatedApiKey: false,
     lastValidationMessage: null,
+    stepPollingMinutes: 30,
+    stepSensorAvailable: true,
+    stepsPermissionGranted: true,
+    todaySteps: 0,
   }),
   getSettings: async () => ({
     caloriesConsumedToday: 0,
@@ -55,6 +71,22 @@ const fallbackSettingsModule: SculptSettingsModule = {
     hasApiKey: false,
     hasValidatedApiKey: false,
     lastValidationMessage: null,
+    stepPollingMinutes: 30,
+    stepSensorAvailable: true,
+    stepsPermissionGranted: true,
+    todaySteps: 0,
+  }),
+  refreshSteps: async () => ({
+    caloriesConsumedToday: 0,
+    dailyCalorieTarget: 2500,
+    defaultWeight: 70,
+    hasApiKey: false,
+    hasValidatedApiKey: false,
+    lastValidationMessage: null,
+    stepPollingMinutes: 30,
+    stepSensorAvailable: true,
+    stepsPermissionGranted: true,
+    todaySteps: 0,
   }),
   resetToday: async () => ({
     caloriesConsumedToday: 0,
@@ -63,6 +95,10 @@ const fallbackSettingsModule: SculptSettingsModule = {
     hasApiKey: false,
     hasValidatedApiKey: false,
     lastValidationMessage: null,
+    stepPollingMinutes: 30,
+    stepSensorAvailable: true,
+    stepsPermissionGranted: true,
+    todaySteps: 0,
   }),
   setDailyCalorieTarget: async target => ({
     caloriesConsumedToday: 0,
@@ -71,6 +107,10 @@ const fallbackSettingsModule: SculptSettingsModule = {
     hasApiKey: false,
     hasValidatedApiKey: false,
     lastValidationMessage: null,
+    stepPollingMinutes: 30,
+    stepSensorAvailable: true,
+    stepsPermissionGranted: true,
+    todaySteps: 0,
   }),
   setDefaultWeight: async weight => ({
     caloriesConsumedToday: 0,
@@ -79,6 +119,22 @@ const fallbackSettingsModule: SculptSettingsModule = {
     hasApiKey: false,
     hasValidatedApiKey: false,
     lastValidationMessage: null,
+    stepPollingMinutes: 30,
+    stepSensorAvailable: true,
+    stepsPermissionGranted: true,
+    todaySteps: 0,
+  }),
+  setStepPollingMinutes: async minutes => ({
+    caloriesConsumedToday: 0,
+    dailyCalorieTarget: 2500,
+    defaultWeight: 70,
+    hasApiKey: false,
+    hasValidatedApiKey: false,
+    lastValidationMessage: null,
+    stepPollingMinutes: minutes,
+    stepSensorAvailable: true,
+    stepsPermissionGranted: true,
+    todaySteps: 0,
   }),
   validateAndStoreApiKey: async () => ({
     caloriesConsumedToday: 0,
@@ -87,6 +143,10 @@ const fallbackSettingsModule: SculptSettingsModule = {
     hasApiKey: true,
     hasValidatedApiKey: true,
     lastValidationMessage: 'API key validated.',
+    stepPollingMinutes: 30,
+    stepSensorAvailable: true,
+    stepsPermissionGranted: true,
+    todaySteps: 0,
   }),
 };
 
@@ -101,6 +161,8 @@ function App(): React.JSX.Element {
   const [isSavingKey, setIsSavingKey] = useState(false);
   const [isSavingTarget, setIsSavingTarget] = useState(false);
   const [isSavingDefaultWeight, setIsSavingDefaultWeight] = useState(false);
+  const [isSavingStepPolling, setIsSavingStepPolling] = useState(false);
+  const [isRefreshingSteps, setIsRefreshingSteps] = useState(false);
   const [isRunningMaintenance, setIsRunningMaintenance] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
@@ -194,6 +256,61 @@ function App(): React.JSX.Element {
       setStatusMessage('API key cleared.');
     } catch {
       setStatusMessage('Could not clear API key.');
+    }
+  };
+
+  const saveStepPollingMinutes = async (minutes: number) => {
+    setIsSavingStepPolling(true);
+    setStatusMessage(null);
+
+    try {
+      const nextSettings = await sculptSettings.setStepPollingMinutes(minutes);
+      setSettings(nextSettings);
+      setStatusMessage(`Step refresh set to every ${minutes} minutes.`);
+    } catch {
+      setStatusMessage('Could not update step refresh interval.');
+    } finally {
+      setIsSavingStepPolling(false);
+    }
+  };
+
+  const refreshSteps = async () => {
+    setIsRefreshingSteps(true);
+    setStatusMessage(null);
+
+    try {
+      const nextSettings = await sculptSettings.refreshSteps();
+      setSettings(nextSettings);
+      setStatusMessage('Steps refreshed.');
+    } catch {
+      setStatusMessage('Could not refresh steps.');
+    } finally {
+      setIsRefreshingSteps(false);
+    }
+  };
+
+  const enableStepsPermission = async () => {
+    if (Platform.OS !== 'android') {
+      return;
+    }
+
+    if (Platform.Version < 29) {
+      await refreshSteps();
+      return;
+    }
+
+    try {
+      const result = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.ACTIVITY_RECOGNITION,
+      );
+      if (result === PermissionsAndroid.RESULTS.GRANTED) {
+        setStatusMessage('Steps permission granted.');
+        await refreshSteps();
+        return;
+      }
+      setStatusMessage('Steps permission was denied.');
+    } catch {
+      setStatusMessage('Could not request steps permission.');
     }
   };
 
@@ -366,6 +483,73 @@ function App(): React.JSX.Element {
         </View>
 
         <View style={styles.card}>
+          <Text style={styles.cardTitle}>Steps tracking</Text>
+          <Text style={styles.cardBody}>
+            The widget refreshes steps in the top middle panel. Current saved steps:{' '}
+            <Text style={styles.inlineHighlight}>{settings?.todaySteps ?? 0}</Text>.
+          </Text>
+          <Text style={styles.cardBody}>
+            Sensor:{' '}
+            <Text style={styles.inlineHighlight}>
+              {settings?.stepSensorAvailable ? 'available' : 'missing'}
+            </Text>
+            {'  '}Permission:{' '}
+            <Text style={styles.inlineHighlight}>
+              {settings?.stepsPermissionGranted ? 'granted' : 'required'}
+            </Text>
+          </Text>
+          <View style={styles.optionRow}>
+            {STEP_POLLING_OPTIONS.map(minutes => {
+              const isSelected = settings?.stepPollingMinutes === minutes;
+              return (
+                <Pressable
+                  key={minutes}
+                  disabled={isSavingStepPolling}
+                  onPress={() => saveStepPollingMinutes(minutes)}
+                  style={({pressed}) => [
+                    styles.optionChip,
+                    isSelected && {borderColor: accentColor, backgroundColor: accentSoft},
+                    (pressed || isSavingStepPolling) && styles.buttonPressed,
+                  ]}>
+                  <Text style={[styles.optionChipText, isSelected && {color: '#f8fafc'}]}>
+                    {minutes}m
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          {!settings?.stepsPermissionGranted ? (
+            <Pressable
+              onPress={enableStepsPermission}
+              style={({pressed}) => [
+                styles.primaryButton,
+                {backgroundColor: accentColor, marginTop: 6},
+                pressed && styles.buttonPressed,
+              ]}>
+              <Text style={styles.primaryButtonText}>Enable steps permission</Text>
+            </Pressable>
+          ) : null}
+          <Pressable
+            disabled={
+              isRefreshingSteps || !settings?.stepSensorAvailable || !settings?.stepsPermissionGranted
+            }
+            onPress={refreshSteps}
+            style={({pressed}) => [
+              styles.secondaryButton,
+              (pressed ||
+                isRefreshingSteps ||
+                !settings?.stepSensorAvailable ||
+                !settings?.stepsPermissionGranted) && styles.buttonPressed,
+            ]}>
+            {isRefreshingSteps ? (
+              <ActivityIndicator color="#d6dfeb" />
+            ) : (
+              <Text style={styles.secondaryButtonText}>Refresh steps now</Text>
+            )}
+          </Pressable>
+        </View>
+
+        <View style={styles.card}>
           <Text style={styles.cardTitle}>Current status</Text>
           <Text style={styles.cardBody}>
             Widget capture gate:{' '}
@@ -480,6 +664,26 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: 12,
   },
+  optionRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 6,
+  },
+  optionChip: {
+    backgroundColor: '#0a1526',
+    borderColor: '#304662',
+    borderRadius: 999,
+    borderWidth: 1,
+    marginBottom: 10,
+    marginRight: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  optionChipText: {
+    color: '#c1ccda',
+    fontSize: 14,
+    fontWeight: '700',
+  },
   input: {
     backgroundColor: '#0a1526',
     borderColor: '#304662',
@@ -566,6 +770,8 @@ function withAlpha(hexColor: string, alpha: number): string {
 function formatWeight(weight: number): string {
   return weight.toFixed(1);
 }
+
+const STEP_POLLING_OPTIONS = [15, 30, 60, 120];
 
 function hsvToHex(h: number, s: number, v: number): string {
   const c = v * s;

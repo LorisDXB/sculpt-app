@@ -10,6 +10,9 @@
     <string name="widget_weight_compare_yesterday">D %1$s</string>
     <string name="widget_weight_compare_last_week">W %1$s</string>
     <string name="widget_weight_compare_missing">--</string>
+    <string name="widget_steps_label">Steps</string>
+    <string name="widget_steps_permission_required">Enable</string>
+    <string name="widget_steps_unavailable">No sensor</string>
     <string name="widget_macro_format">P %1$dg  C %2$dg  F %3$dg</string>
     <string name="widget_macro_empty">No macros yet</string>
     <string name="widget_no_meal">No meal today</string>

@@ -8,10 +8,23 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.util.Log
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import com.poissoncassant.sculptapp.config.AppConfigRepository
+import com.poissoncassant.sculptapp.steps.StepRefreshWorker
+import com.poissoncassant.sculptapp.steps.StepTrackingStatus
+import com.poissoncassant.sculptapp.steps.StepTrackingSupport
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import java.util.concurrent.TimeUnit
 
 object WidgetRefreshScheduler {
+  fun syncSchedules(context: Context) {
+    scheduleNextMidnightRefresh(context)
+    scheduleStepRefresh(context)
+  }
+
   fun scheduleNextMidnightRefresh(context: Context) {
     val appContext = context.applicationContext
     val alarmManager = appContext.getSystemService(AlarmManager::class.java) ?: return
@@ -61,6 +74,26 @@ object WidgetRefreshScheduler {
         }
   }
 
+  private fun scheduleStepRefresh(context: Context) {
+    val appContext = context.applicationContext
+    val workManager = WorkManager.getInstance(appContext)
+    if (!hasActiveWidgets(appContext) || StepTrackingSupport.resolveStatus(appContext) != StepTrackingStatus.READY) {
+      Log.d(TAG, "Canceling step refresh work because widget or steps tracking is unavailable")
+      workManager.cancelUniqueWork(STEP_REFRESH_WORK_NAME)
+      return
+    }
+
+    val pollingMinutes = AppConfigRepository(appContext).getStepPollingMinutes().toLong()
+    val request =
+        PeriodicWorkRequestBuilder<StepRefreshWorker>(pollingMinutes, TimeUnit.MINUTES).build()
+    workManager.enqueueUniquePeriodicWork(
+        STEP_REFRESH_WORK_NAME,
+        ExistingPeriodicWorkPolicy.UPDATE,
+        request,
+    )
+    Log.d(TAG, "Scheduled periodic step refresh every ${pollingMinutes}m")
+  }
+
   private fun hasActiveWidgets(context: Context): Boolean {
     val appWidgetManager = AppWidgetManager.getInstance(context)
     val widgetComponent = ComponentName(context, CalorieWidgetProvider::class.java)
@@ -81,5 +114,6 @@ object WidgetRefreshScheduler {
   }
 
   private const val REQUEST_MIDNIGHT_REFRESH = 1008
+  private const val STEP_REFRESH_WORK_NAME = "sculpt_widget_step_refresh"
   private const val TAG = "SculptWidgetRefresh"
 }

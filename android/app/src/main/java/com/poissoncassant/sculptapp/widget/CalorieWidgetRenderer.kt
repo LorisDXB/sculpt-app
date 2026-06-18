@@ -18,6 +18,8 @@ import android.util.TypedValue
 import android.widget.RemoteViews
 import com.poissoncassant.sculptapp.AddMealEntryActivity
 import com.poissoncassant.sculptapp.R
+import com.poissoncassant.sculptapp.steps.StepTrackingStatus
+import java.text.NumberFormat
 import kotlin.math.abs
 import kotlin.math.max
 
@@ -47,7 +49,7 @@ object CalorieWidgetRenderer {
         TAG,
         "render widgetIds=${appWidgetIds.joinToString()} date=${state.date} consumed=${state.caloriesConsumedToday} target=${state.dailyCalorieTarget} status=${state.analysisStatus} partial=$usePartialUpdate",
     )
-    WidgetRefreshScheduler.scheduleNextMidnightRefresh(context)
+    WidgetRefreshScheduler.syncSchedules(context)
 
     appWidgetIds.forEach { appWidgetId ->
       val presentation = presentationFor(appWidgetManager.getAppWidgetOptions(appWidgetId))
@@ -98,6 +100,7 @@ object CalorieWidgetRenderer {
           },
       )
 
+      renderStepPanel(context, views, state.stepPanel)
       renderRightPanel(context, views, state, weightMode, lastMeal)
       bindTapTargets(context, views)
 
@@ -176,6 +179,28 @@ object CalorieWidgetRenderer {
       views.setViewVisibility(R.id.widget_last_meal_increase_zone, android.view.View.VISIBLE)
       views.setViewVisibility(R.id.widget_last_meal_decrease_zone, android.view.View.VISIBLE)
     }
+  }
+
+  private fun renderStepPanel(
+      context: Context,
+      views: RemoteViews,
+      stepPanel: StepPanelState,
+  ) {
+    val valueText =
+        when (stepPanel.status) {
+          StepTrackingStatus.READY -> stepPanel.todaySteps?.let { formatSteps(it) } ?: STEP_PLACEHOLDER
+          StepTrackingStatus.PERMISSION_REQUIRED,
+          StepTrackingStatus.SENSOR_UNAVAILABLE -> STEP_PLACEHOLDER
+        }
+    val statusText =
+        when (stepPanel.status) {
+          StepTrackingStatus.READY -> context.getString(R.string.widget_steps_label)
+          StepTrackingStatus.PERMISSION_REQUIRED -> context.getString(R.string.widget_steps_permission_required)
+          StepTrackingStatus.SENSOR_UNAVAILABLE -> context.getString(R.string.widget_steps_unavailable)
+        }
+
+    views.setTextViewText(R.id.widget_steps_value, valueText)
+    views.setTextViewText(R.id.widget_steps_status, statusText)
   }
 
   private fun renderWeightMode(
@@ -380,6 +405,8 @@ object CalorieWidgetRenderer {
     views.setTextViewTextSize(R.id.widget_last_meal_name, TypedValue.COMPLEX_UNIT_SP, presentation.mealNameSp)
     views.setTextViewTextSize(R.id.widget_last_meal_value, TypedValue.COMPLEX_UNIT_SP, presentation.mealValueSp)
     views.setTextViewTextSize(R.id.widget_macro_value, TypedValue.COMPLEX_UNIT_SP, presentation.macroSp)
+    views.setTextViewTextSize(R.id.widget_steps_value, TypedValue.COMPLEX_UNIT_SP, presentation.stepsValueSp)
+    views.setTextViewTextSize(R.id.widget_steps_status, TypedValue.COMPLEX_UNIT_SP, presentation.stepsLabelSp)
     views.setTextViewTextSize(R.id.widget_weight_vs_yesterday, TypedValue.COMPLEX_UNIT_SP, presentation.weightComparisonSp)
     views.setTextViewTextSize(R.id.widget_weight_vs_last_week, TypedValue.COMPLEX_UNIT_SP, presentation.weightComparisonSp)
     WEIGHT_DIGIT_VIEW_IDS.forEach { views.setTextViewTextSize(it, TypedValue.COMPLEX_UNIT_SP, presentation.weightDigitSp) }
@@ -393,6 +420,7 @@ object CalorieWidgetRenderer {
     views.setInt(R.id.widget_last_meal_name, "setMaxLines", presentation.lastMealNameMaxLines)
     views.setInt(R.id.widget_last_meal_value, "setMaxLines", presentation.secondaryMaxLines)
     views.setInt(R.id.widget_macro_value, "setMaxLines", presentation.supportingMaxLines)
+    views.setInt(R.id.widget_steps_status, "setMaxLines", 1)
     views.setInt(R.id.widget_weight_vs_yesterday, "setMaxLines", 1)
     views.setInt(R.id.widget_weight_vs_last_week, "setMaxLines", 1)
 
@@ -436,6 +464,8 @@ object CalorieWidgetRenderer {
               mealValueSp = 23f,
               metaSp = 12f,
               macroSp = 12f,
+              stepsValueSp = 15f,
+              stepsLabelSp = 10f,
               weightDigitSp = 22f,
               weightComparisonSp = 11f,
               metaMaxLines = 2,
@@ -459,6 +489,8 @@ object CalorieWidgetRenderer {
               mealValueSp = 12f,
               metaSp = 9f,
               macroSp = 8f,
+              stepsValueSp = 10f,
+              stepsLabelSp = 7f,
               weightDigitSp = 16f,
               weightComparisonSp = 8f,
               metaMaxLines = 2,
@@ -482,6 +514,8 @@ object CalorieWidgetRenderer {
               mealValueSp = 22f,
               metaSp = 12f,
               macroSp = 12f,
+              stepsValueSp = 14f,
+              stepsLabelSp = 9f,
               weightDigitSp = 20f,
               weightComparisonSp = 10f,
               metaMaxLines = 2,
@@ -575,6 +609,8 @@ object CalorieWidgetRenderer {
 
   private fun formatTenths(value: Int): String = "${value / 10}.${value % 10}"
 
+  private fun formatSteps(value: Int): String = NumberFormat.getIntegerInstance().format(value)
+
   private fun blendColors(from: Int, to: Int, ratio: Float): Int {
     val clamped = ratio.coerceIn(0f, 1f)
     val inverse = 1f - clamped
@@ -599,6 +635,8 @@ object CalorieWidgetRenderer {
       val mealValueSp: Float,
       val metaSp: Float,
       val macroSp: Float,
+      val stepsValueSp: Float,
+      val stepsLabelSp: Float,
       val weightDigitSp: Float,
       val weightComparisonSp: Float,
       val metaMaxLines: Int,
@@ -629,6 +667,7 @@ object CalorieWidgetRenderer {
   private const val REQUEST_NO_OP = 1007
   private const val REQUEST_SELECT_WEIGHT_DIGIT_BASE = 1100
   private const val MAX_WEIGHT_TENTHS = 9999
+  private const val STEP_PLACEHOLDER = "--"
   private val GAIN_COMPARISON_COLOR = Color.parseColor("#F87171")
   private val LOSS_COMPARISON_COLOR = Color.parseColor("#4ADE80")
   private val NEUTRAL_COMPARISON_COLOR = Color.parseColor("#D9FFFFFF")

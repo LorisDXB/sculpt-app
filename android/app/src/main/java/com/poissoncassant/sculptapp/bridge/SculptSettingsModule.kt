@@ -8,6 +8,7 @@ import com.facebook.react.bridge.ReactMethod
 import com.poissoncassant.sculptapp.ai.NutritionApiClient
 import com.poissoncassant.sculptapp.config.AppConfigRepository
 import com.poissoncassant.sculptapp.widget.CalorieWidgetRenderer
+import com.poissoncassant.sculptapp.widget.WidgetRefreshScheduler
 import com.poissoncassant.sculptapp.widget.WidgetStateRepository
 
 class SculptSettingsModule(reactContext: ReactApplicationContext) :
@@ -94,6 +95,29 @@ class SculptSettingsModule(reactContext: ReactApplicationContext) :
   }
 
   @ReactMethod
+  fun setStepPollingMinutes(minutes: Double, promise: Promise) {
+    try {
+      AppConfigRepository(reactApplicationContext).saveStepPollingMinutes(minutes.toInt())
+      WidgetRefreshScheduler.syncSchedules(reactApplicationContext)
+      promise.resolve(buildSettingsMap())
+    } catch (exception: Exception) {
+      promise.reject("step_polling_update_failed", exception)
+    }
+  }
+
+  @ReactMethod
+  fun refreshSteps(promise: Promise) {
+    try {
+      WidgetStateRepository(reactApplicationContext).refreshTodayStepsFromSensor()
+      WidgetRefreshScheduler.syncSchedules(reactApplicationContext)
+      CalorieWidgetRenderer.refreshAll(reactApplicationContext)
+      promise.resolve(buildSettingsMap())
+    } catch (exception: Exception) {
+      promise.reject("step_refresh_failed", exception)
+    }
+  }
+
+  @ReactMethod
   fun clearAllLocalData(promise: Promise) {
     try {
       WidgetStateRepository(reactApplicationContext).clearAllLocalData()
@@ -113,6 +137,20 @@ class SculptSettingsModule(reactContext: ReactApplicationContext) :
         putInt("dailyCalorieTarget", widgetState.dailyCalorieTarget)
         putInt("caloriesConsumedToday", widgetState.caloriesConsumedToday)
         putDouble("defaultWeight", config.getDefaultWeightTenths() / 10.0)
+        putInt("stepPollingMinutes", config.getStepPollingMinutes())
+        putBoolean(
+            "stepsPermissionGranted",
+            com.poissoncassant.sculptapp.steps.StepTrackingSupport.hasActivityRecognitionPermission(
+                reactApplicationContext,
+            ),
+        )
+        putBoolean(
+            "stepSensorAvailable",
+            com.poissoncassant.sculptapp.steps.StepTrackingSupport.hasStepCounterSensor(
+                reactApplicationContext,
+            ),
+        )
+        putInt("todaySteps", widgetState.stepPanel.todaySteps ?: 0)
         putBoolean("hasValidatedApiKey", config.hasValidatedApiKey())
         putBoolean("hasApiKey", config.getApiKey() != null)
         putString("lastValidationMessage", config.getLastValidationMessage())
