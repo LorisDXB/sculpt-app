@@ -29,7 +29,7 @@ class SculptSettingsModule(reactContext: ReactApplicationContext) :
   fun setDailyCalorieTarget(target: Double, promise: Promise) {
     try {
       WidgetStateRepository(reactApplicationContext).setDailyCalorieTarget(target.toInt())
-      CalorieWidgetRenderer.refreshAll(reactApplicationContext)
+      CalorieWidgetRenderer.refreshAll(reactApplicationContext, usePartialUpdate = false)
       promise.resolve(buildSettingsMap())
     } catch (exception: Exception) {
       promise.reject("daily_target_update_failed", exception)

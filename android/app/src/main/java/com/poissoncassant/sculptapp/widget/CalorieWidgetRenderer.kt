@@ -121,7 +121,7 @@ object CalorieWidgetRenderer {
   ) {
     if (weightMode) {
       views.setTextViewText(R.id.widget_last_meal_label, context.getString(R.string.widget_weight_label))
-      views.setInt(R.id.widget_last_meal_label, "setGravity", android.view.Gravity.END)
+      views.setInt(R.id.widget_last_meal_label, "setGravity", android.view.Gravity.START)
       views.setViewVisibility(R.id.widget_last_meal_content_container, android.view.View.INVISIBLE)
       views.setViewVisibility(R.id.widget_weight_mode_overlay, android.view.View.VISIBLE)
       views.setViewVisibility(R.id.widget_analysis_progress, android.view.View.GONE)
@@ -131,7 +131,7 @@ object CalorieWidgetRenderer {
     }
 
     views.setTextViewText(R.id.widget_last_meal_label, context.getString(R.string.widget_last_meal_label))
-    views.setInt(R.id.widget_last_meal_label, "setGravity", android.view.Gravity.END)
+    views.setInt(R.id.widget_last_meal_label, "setGravity", android.view.Gravity.START)
     views.setViewVisibility(R.id.widget_last_meal_content_container, android.view.View.VISIBLE)
     views.setViewVisibility(R.id.widget_weight_mode_overlay, android.view.View.GONE)
     views.setViewVisibility(R.id.widget_step_button, android.view.View.VISIBLE)

@@ -78,7 +78,7 @@ class MealAnalysisWorker(
               fatGrams = estimate.fatGrams,
               timestamp = Instant.now().toString(),
           )
-          CalorieWidgetRenderer.refreshAll(applicationContext)
+          CalorieWidgetRenderer.refreshAll(applicationContext, usePartialUpdate = false)
           Log.d(TAG, "Meal analysis completed successfully")
           Result.success()
         }

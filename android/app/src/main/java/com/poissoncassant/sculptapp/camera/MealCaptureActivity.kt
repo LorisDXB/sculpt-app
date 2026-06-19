@@ -320,7 +320,7 @@ class MealCaptureActivity : ComponentActivity() {
                 fatGrams = estimate.fatGrams,
                 timestamp = Instant.now().toString(),
             )
-            CalorieWidgetRenderer.refreshAll(this)
+            CalorieWidgetRenderer.refreshAll(this, usePartialUpdate = false)
             compressedFile
           }
           .onSuccess {
