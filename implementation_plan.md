@@ -1,315 +1,383 @@
 # Implementation Plan
 
-## Scope
+## Goal
 
-This plan covers:
+Redo the step counter backend so it becomes reliable without changing the current frontend layout or widget presentation.
 
-- Showing today's steps in the top middle section of the widget
-- Fetching step count automatically from the device
-- Refreshing step data every 30 minutes when possible
-- Letting the user choose the step refresh interval
-- Keeping battery impact limited
-- Preserving the current calorie, meal, and weight widget behavior
+UI constraints to preserve:
 
-This plan assumes:
+- Keep the widget center steps display exactly as it is visually
+- Keep the app settings screen structure and step controls conceptually the same
+- Keep the countdown/debug affordances only if still useful during the rework
+- Do not change calorie, meal, or weight UI behavior
 
-- Steps are display-only for now
-- The widget should show today's live step count, not a manually entered step value
-- The default refresh cadence can be 30 minutes instead of real-time updates
+## Current Diagnosis
 
-## Current Findings
+The current step-counter structure is fragile for structural reasons:
 
-- The widget already has a real center visual column in `calorie_widget.xml`.
-- That center area is currently structurally present but visually unused.
-- The middle touch zone is currently inert, which is compatible with a steps display.
-- Widget data is currently driven by `WidgetStateRepository` and rendered by `CalorieWidgetRenderer`.
-- The app does not currently integrate with Health Connect, Google Fit, or direct step sensors.
+- It relies on `Sensor.TYPE_STEP_COUNTER` as a pull-based source
+- Each refresh tries to register a listener, wait briefly, and read one instantaneous cumulative total
+- The app then computes deltas from the last stored total
+- This works only if the device delivers a fresh sensor callback exactly when we ask
 
-## Recommended Data Source
+From the logs and code, the weak points are:
 
-Recommended source:
+- The sensor callback can return the same cached cumulative total many times in a row
+- The system may batch or delay step-counter updates depending on device/vendor behavior
+- Background alarm timing can be correct while the fetched sensor value is still stale
+- The repository logic is not fundamentally wrong, but it depends on a data source that is not behaving like a dependable on-demand query API
 
-- Android `Health Connect`
+Conclusion:
+
+- The scheduling path is now mostly working
+- The accumulation math is mostly working
+- The unstable part is the data acquisition model itself
+- We should redesign the step source structure, not keep patching the current snapshot model
+
+## Recommended Redesign
+
+Recommended direction:
+
+- Replace the current "query step counter on refresh" design with a persistent daily baseline model
+- Keep using the step counter sensor if we want the lightest dependency path
+- Stop treating each refresh as a fresh sensor session
+
+Core idea:
+
+- Maintain a dedicated step tracking component responsible for:
+  - establishing a baseline cumulative total for the day
+  - persisting that baseline safely
+  - reading the latest available cumulative total
+  - deriving today's steps from `latestTotal - baseline`
+- The widget and app should consume a stable step state object instead of owning the sensor logic directly
+
+## Target Architecture
+
+### 1. Introduce a dedicated step domain layer
+
+New package:
+
+- `android/app/src/main/java/com/poissoncassant/sculptapp/steps/...`
+
+Responsibilities:
+
+- Own all sensor access
+- Own daily baseline persistence
+- Own scheduling metadata
+- Return a structured step snapshot to callers
+
+Recommended classes:
+
+- `StepTrackingRepository`
+- `StepBaselineStore`
+- `StepRefreshCoordinator`
+- `StepSensorGateway`
+
+This separates:
+
+- sensor concerns
+- persisted state concerns
+- scheduling concerns
+- widget rendering concerns
+
+### 2. Replace "previous sensor total" with "day baseline"
+
+Current model:
+
+- compare current sensor total against previous refresh total
+
+Proposed model:
+
+- store one baseline cumulative total per day
+- compute:
+  - `todaySteps = max(0, currentTotal - baselineTotal)`
+
+Why this is better:
+
+- no need to trust every intermediate refresh
+- no cumulative drift from repeated delta application
+- easier to reason about day reset
+- easier to debug because there is one source of truth
+
+Persisted fields should become:
+
+- `step_day_date`
+- `step_day_baseline_total`
+- `step_last_seen_total`
+- `step_last_updated_at`
+- `step_status`
+
+Optional:
+
+- `step_last_successful_refresh_at`
+- `step_last_refresh_error`
+
+### 3. Make reset/day rollover baseline-driven
+
+On day rollover or manual reset:
+
+- create a new day record
+- keep displayed steps at `0`
+- mark baseline as needing initialization
+
+On next successful sensor read:
+
+- if no baseline exists for the current day:
+  - set baseline to current cumulative sensor total
+  - set displayed steps to `0`
+- otherwise:
+  - compute `currentTotal - baseline`
+
+This avoids:
+
+- repeated baseline confusion
+- lost state caused by partially cleared keys
+- over-dependence on the exact moment reset occurs
+
+### 4. Move all sensor reads behind one gateway
+
+Current issue:
+
+- sensor reading is spread across refresh flows and repository logic assumptions
+
+Plan:
+
+- one `StepSensorGateway` becomes the only place allowed to touch `SensorManager`
+- it returns:
+  - latest total
+  - sensor metadata if needed
+  - failure reason if unavailable
+
+This gateway should:
+
+- use a dedicated looper-backed thread
+- centralize timeout behavior
+- centralize debug logs
+- avoid leaking sensor-thread details into widget code
+
+### 5. Add reliability state, not just permission state
+
+Current step status is too simple:
+
+- `READY`
+- `PERMISSION_REQUIRED`
+- `SENSOR_UNAVAILABLE`
+
+We need richer operational states:
+
+- `READY`
+- `PERMISSION_REQUIRED`
+- `SENSOR_UNAVAILABLE`
+- `BASELINE_PENDING`
+- `STALE_READING`
+- `READ_FAILED`
 
 Why:
 
-- It is the cleanest modern path for reading daily step totals
-- It is better suited than trying to keep a raw sensor listener alive for widget-only refreshes
-- It supports querying today's aggregate steps rather than maintaining our own pedometer session state
+- a sensor can exist and still not provide a useful updated value
+- the UI can still remain unchanged while internal state becomes much easier to debug
 
-Important note:
+The frontend can still map these to the same current text if we want no visual change.
 
-- This requires user permission and device support
-- Some devices may not have Health Connect installed or available
-- We need fallback behavior when permission is missing or the source is unavailable
+### 6. Redo scheduler ownership
 
-## Widget Structure Proposal
+Current issue:
 
-HTML-style structure with steps added:
+- scheduling logic and step logic are still coupled through widget refresh paths
 
-```html
-<widget-root style="display:flex; flex-direction:column;">
-  <content-section style="display:flex; flex-direction:row; flex:1;">
-    <left-section style="width:40%; display:flex; flex-direction:column;">
-      <left-label>Remaining</left-label>
-      <left-primary-stat>#### kcal</left-primary-stat>
-      <left-secondary-stat>#### eaten / #### target</left-secondary-stat>
-      <left-supporting-stat>P ##g  C ##g  F ##g</left-supporting-stat>
-    </left-section>
+Plan:
 
-    <middle-section style="width:20%; display:flex; flex-direction:column; align-items:center;">
-      <middle-label>Steps</middle-label>
-      <middle-primary-stat>####</middle-primary-stat>
-    </middle-section>
+- let a `StepRefreshCoordinator` own:
+  - next refresh time
+  - forced reschedule
+  - test-mode intervals
+  - debug logging for trigger/failure/success
 
-    <right-section style="width:40%; display:flex; flex-direction:column;">
-      <right-label>Weight or Last meal</right-label>
-      <right-content>Existing right panel behavior</right-content>
-    </right-section>
-  </content-section>
+The widget should not be the place that conceptually owns steps scheduling.
 
-  <navigation-section style="display:flex; flex-direction:row;">
-    <nav-button>Add meal</nav-button>
-    <nav-button>Step ## or hidden in weight mode</nav-button>
-  </navigation-section>
-</widget-root>
-```
+Recommended flow:
 
-Behavior:
+1. scheduler fires
+2. coordinator runs step refresh
+3. coordinator writes refreshed step snapshot
+4. widget redraw happens after step state is updated
 
-- The middle section becomes visual steps display only
-- The middle tap zone remains inert unless a later feature adds interactions
-- Left and right panel behaviors stay unchanged
+This keeps the widget as a consumer, not the orchestrator.
 
-## Refresh Strategy
+### 7. Keep frontend unchanged, but simplify what it reads
 
-Target behavior:
+The app UI should keep showing:
 
-- Refresh steps on a user-configurable interval
-- Default to 30 minutes
+- current steps
+- refresh frequency
+- next automatic refresh countdown
+- manual refresh button
 
-Recommended implementation:
+But the app should read these from a cleaner native shape:
 
-- Use `WorkManager` or `AlarmManager`-driven scheduled refresh
-- On each refresh:
-  - query today's steps
-  - persist them into widget state
-  - refresh the widget UI
+- `todaySteps`
+- `stepStatus`
+- `stepPollingSeconds`
+- `nextStepRefreshAtMillis`
+- `lastSuccessfulStepRefreshAtMillis`
 
-Configurable polling:
-
-- Add a user setting for step refresh frequency
-- Store the selected interval in app config
-- Rebuild or reschedule background refresh when the interval changes
-- Use safe predefined options rather than arbitrary free text
-
-Constraints:
-
-- Exact 30-minute timing may not be guaranteed by Android in all battery modes
-- `WorkManager` periodic work has platform constraints and can be deferred
-- If strict 30-minute cadence is not guaranteed, we should aim for “approximately every 30 minutes”
-- Some user-selected intervals may need to be clamped to what Android allows efficiently
-
-Best practical interpretation:
-
-- schedule periodic refresh at the closest battery-safe cadence Android allows
-- trigger opportunistic refresh when the widget is updated manually or the app opens
+This avoids app logic trying to infer backend state from partial fields.
 
 ## Implementation Steps
 
-### 1. Add step data to widget state
+### Step 1. Create a proper step repository
 
 Files:
 
-- `android/app/src/main/java/com/poissoncassant/sculptapp/widget/CalorieWidgetState.kt`
+- new files under `steps/`
+- remove step storage logic from `WidgetStateRepository` where possible
+
+Work:
+
+- create a repository that exposes:
+  - `getCurrentStepSnapshot()`
+  - `refreshCurrentStepSnapshot()`
+  - `resetForNewDay()`
+
+### Step 2. Replace delta accumulation with baseline math
+
+Files:
+
+- step repository/store files
+- `WidgetStateRepository.kt`
+
+Work:
+
+- remove dependence on `KEY_STEP_LAST_SENSOR_TOTAL` as the main daily counter source
+- store a per-day baseline total
+- derive today's steps from `currentTotal - baseline`
+
+### Step 3. Refactor widget state to consume step snapshot only
+
+Files:
+
+- `CalorieWidgetState.kt`
+- `WidgetStateRepository.kt`
+
+Work:
+
+- make widget state read a stable step snapshot from the new step repository
+- stop mixing step-refresh mechanics directly into widget-state persistence
+
+### Step 4. Refactor scheduling around the step coordinator
+
+Files:
+
+- `WidgetRefreshScheduler.kt`
+- new step coordinator files
+- `CalorieWidgetProvider.kt`
+
+Work:
+
+- keep the same visible timer feature if useful
+- move all step refresh trigger handling into the step coordinator
+- keep widget redraw as a separate final step
+
+### Step 5. Preserve test mode
+
+Files:
+
+- config repository
+- settings bridge
+- app settings UI
+
+Work:
+
+- keep `30s` as a debug/testing interval
+- keep standard real options:
+  - `15m`
+  - `30m`
+  - `60m`
+  - `120m`
+
+### Step 6. Add stronger debugging hooks
+
+Files:
+
+- step repository
+- sensor gateway
+- scheduler/coordinator
+
+Logs to keep:
+
+- schedule created
+- schedule fired
+- sensor read started
+- sensor read returned total
+- baseline initialized
+- today steps derived
+- widget redraw triggered
+
+Optional debug fields in app settings:
+
+- last raw cumulative total
+- current day baseline total
+- last successful refresh timestamp
+
+These can remain internal or temporary if we do not want permanent UI additions.
+
+### Step 7. Verification pass
+
+Test cases:
+
+1. Manual refresh twice without movement:
+   - raw total same
+   - displayed steps unchanged
+
+2. Manual refresh with real walking between refreshes:
+   - raw total increases
+   - displayed steps increases accordingly
+
+3. Automatic refresh with `30s` interval:
+   - timer counts down
+   - timer restarts
+   - displayed steps update when raw total changes
+
+4. Day reset:
+   - steps display resets to `0`
+   - new day baseline is initialized correctly
+
+5. Permission missing:
+   - status handled gracefully
+
+6. Widget redraw:
+   - no frontend layout change
+
+## Files Likely To Change
+
+- `android/app/src/main/java/com/poissoncassant/sculptapp/steps/StepSnapshotReader.kt`
+- `android/app/src/main/java/com/poissoncassant/sculptapp/steps/StepTrackingSupport.kt`
+- new step repository/store/coordinator files under `steps/`
 - `android/app/src/main/java/com/poissoncassant/sculptapp/widget/WidgetStateRepository.kt`
-
-Work:
-
-- Extend widget state with step-related fields:
-  - today's step count
-  - last step refresh timestamp
-  - step source availability state
-- Persist the latest fetched steps in widget storage.
-- Preserve step data across widget redraws and day rollover.
-- Reset the daily step total only when the date changes and a new fetch occurs.
-
-### 2. Add a step data provider abstraction
-
-Files:
-
-- new Android Kotlin files under a dedicated package, for example:
-  - `android/app/src/main/java/com/poissoncassant/sculptapp/steps/...`
-
-Work:
-
-- Create a small abstraction layer for reading today's steps.
-- Keep widget code decoupled from the specific Android provider.
-- Return a structured result:
-  - success with step count
-  - unavailable
-  - permission missing
-  - error
-
-Why:
-
-- This keeps the renderer and repository simple
-- It allows switching implementation later if Health Connect is replaced or augmented
-
-### 3. Integrate Health Connect for today's steps
-
-Files:
-
-- new Health Connect integration files under `android/app/src/main/java/com/poissoncassant/sculptapp/steps/...`
-- `android/app/src/main/AndroidManifest.xml`
-
-Work:
-
-- Add Health Connect dependency and integration code.
-- Query aggregate step count for the current local day.
-- Handle:
-  - Health Connect availability
-  - permission checks
-  - read permission flow
-- Return today's step total to the widget state layer.
-
-### 4. Add refresh scheduling every 30 minutes
-
-Files:
-
-- new scheduler/worker files under a package like:
-  - `android/app/src/main/java/com/poissoncassant/sculptapp/steps/...`
-- possibly existing widget scheduling files if reused
-
-Work:
-
-- Schedule recurring refresh work using the user-selected polling interval.
-- On each scheduled execution:
-  - fetch today's steps
-  - store them in widget state
-  - refresh the widget
-- Reschedule appropriately after reboot and when the widget is added.
-
-Implementation note:
-
-- If exact periodic execution is not possible under the selected scheduler, use the nearest battery-safe allowed periodic model and document that behavior.
-
-### 5. Add user-configurable polling settings
-
-Files:
-
-- `android/app/src/main/java/com/poissoncassant/sculptapp/config/AppConfigRepository.kt`
+- `android/app/src/main/java/com/poissoncassant/sculptapp/widget/CalorieWidgetState.kt`
+- `android/app/src/main/java/com/poissoncassant/sculptapp/widget/WidgetRefreshScheduler.kt`
+- `android/app/src/main/java/com/poissoncassant/sculptapp/widget/CalorieWidgetProvider.kt`
 - `android/app/src/main/java/com/poissoncassant/sculptapp/bridge/SculptSettingsModule.kt`
+- `android/app/src/main/java/com/poissoncassant/sculptapp/config/AppConfigRepository.kt`
 - `App.tsx`
-- step scheduler files
 
-Work:
+## Non-Goals
 
-- Add a persisted step refresh interval setting.
-- Expose it through the native settings bridge.
-- Add a small app setting UI for choosing the refresh cadence.
-- Recommended options:
-  - 15 minutes
-  - 30 minutes
-  - 60 minutes
-  - maybe 120 minutes
-- When the user changes the interval:
-  - persist the value
-  - reschedule future step refresh work
-  - optionally trigger one immediate refresh
+For this rework, do not:
 
-### 6. Add fallback behavior when steps cannot be fetched
+- change the visual placement of the steps UI
+- convert steps into calories
+- change the weight panel UI
+- redesign the app settings page visually
 
-Files:
+## Recommended Next Move
 
-- `android/app/src/main/java/com/poissoncassant/sculptapp/widget/CalorieWidgetRenderer.kt`
-- step provider files
-- `android/app/src/main/res/values/strings.xml`
-- `android/app/src/main/res/values-fr/strings.xml`
+Recommended implementation order:
 
-Work:
+1. baseline-based step repository
+2. sensor gateway cleanup
+3. scheduler/coordinator cleanup
+4. bridge/app countdown hookup
+5. verification with `30s` test mode
 
-- Define display states for:
-  - steps available
-  - permission missing
-  - source unavailable
-  - fetch failed
-- Keep fallback copy short and widget-friendly.
-- Avoid cluttering the widget if step data is unavailable.
-
-### 7. Render steps in the top middle widget section
-
-Files:
-
-- `android/app/src/main/res/layout/calorie_widget.xml`
-- `android/app/src/main/java/com/poissoncassant/sculptapp/widget/CalorieWidgetRenderer.kt`
-
-Work:
-
-- Add a visible steps block in the center column:
-  - label: `Steps`
-  - primary value: today's step count
-- Align it visually to the top middle.
-- Keep the surrounding inert center tap area intact.
-- Make sure the steps display scales cleanly on compact widget sizes.
-
-### 8. Trigger step refresh from useful lifecycle points
-
-Files:
-
-- widget provider and any app entry points as needed
-
-Work:
-
-- Refresh steps when:
-  - scheduled 30-minute refresh fires
-  - widget updates normally
-  - app opens, if appropriate
-- This gives better freshness without needing aggressive background polling.
-
-### 9. Add onboarding or permission entry point in the app
-
-Files:
-
-- `App.tsx`
-- native bridge files if needed
-
-Work:
-
-- Add a lightweight status/entry point in the app so the user can:
-  - see whether steps integration is connected
-  - grant permission if needed
-- Keep this simple unless a larger health settings area is desired later.
-
-## Verification Checklist
-
-- The widget shows today's steps in the top middle section.
-- Left and right panels still behave correctly.
-- Weight mode still hides the step button and expands `Add meal`.
-- Step data persists across widget redraws.
-- Step refresh runs at the user-selected cadence.
-- Changing the polling interval reschedules future refreshes correctly.
-- Battery impact remains limited because no continuous sensor listener is kept alive.
-- Missing permission is handled gracefully.
-- Unavailable Health Connect state is handled gracefully.
-- Day rollover resets the daily step interpretation correctly.
-
-## Risks and Constraints
-
-- Exact every-30-minute execution may not always be guaranteed by Android background scheduling rules.
-- Health Connect availability varies across devices.
-- Permissions add UX work outside the widget itself.
-- Widget UI space is tight, especially on compact sizes, so the steps block must stay concise.
-
-## Recommended First Cut
-
-For the first implementation:
-
-- use Health Connect
-- show steps as display-only
-- default refresh to 30 minutes
-- allow the user to choose the polling interval from a small list of safe options
-- add a minimal app-side permission/status entry point
-- keep the center zone non-interactive
-
-This gives the most value with the least widget complexity.
+This gives us the best chance of fixing the real structural issue without disturbing the frontend.

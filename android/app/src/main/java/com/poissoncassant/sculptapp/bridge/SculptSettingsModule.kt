@@ -7,6 +7,7 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.poissoncassant.sculptapp.ai.NutritionApiClient
 import com.poissoncassant.sculptapp.config.AppConfigRepository
+import com.poissoncassant.sculptapp.steps.StepRefreshCoordinator
 import com.poissoncassant.sculptapp.widget.CalorieWidgetRenderer
 import com.poissoncassant.sculptapp.widget.WidgetRefreshScheduler
 import com.poissoncassant.sculptapp.widget.WidgetStateRepository
@@ -97,8 +98,8 @@ class SculptSettingsModule(reactContext: ReactApplicationContext) :
   @ReactMethod
   fun setStepPollingMinutes(minutes: Double, promise: Promise) {
     try {
-      AppConfigRepository(reactApplicationContext).saveStepPollingMinutes(minutes.toInt())
-      WidgetRefreshScheduler.syncSchedules(reactApplicationContext)
+      AppConfigRepository(reactApplicationContext).saveStepPollingSeconds(minutes.toInt())
+      WidgetRefreshScheduler.syncSchedules(reactApplicationContext, forceStepReschedule = true)
       promise.resolve(buildSettingsMap())
     } catch (exception: Exception) {
       promise.reject("step_polling_update_failed", exception)
@@ -108,9 +109,7 @@ class SculptSettingsModule(reactContext: ReactApplicationContext) :
   @ReactMethod
   fun refreshSteps(promise: Promise) {
     try {
-      WidgetStateRepository(reactApplicationContext).refreshTodayStepsFromSensor()
-      WidgetRefreshScheduler.syncSchedules(reactApplicationContext)
-      CalorieWidgetRenderer.refreshAll(reactApplicationContext)
+      StepRefreshCoordinator(reactApplicationContext).refreshNow(reason = "manual_settings_refresh")
       promise.resolve(buildSettingsMap())
     } catch (exception: Exception) {
       promise.reject("step_refresh_failed", exception)
@@ -137,7 +136,13 @@ class SculptSettingsModule(reactContext: ReactApplicationContext) :
         putInt("dailyCalorieTarget", widgetState.dailyCalorieTarget)
         putInt("caloriesConsumedToday", widgetState.caloriesConsumedToday)
         putDouble("defaultWeight", config.getDefaultWeightTenths() / 10.0)
-        putInt("stepPollingMinutes", config.getStepPollingMinutes())
+        putInt("stepPollingSeconds", config.getStepPollingSeconds())
+        putDouble("nextStepRefreshAtMillis", (config.getNextStepRefreshAtMillis() ?: 0L).toDouble())
+        putString("stepStatus", widgetState.stepPanel.status.name)
+        putDouble(
+            "lastSuccessfulStepRefreshAtMillis",
+            (widgetState.stepPanel.lastSuccessfulRefreshAtMillis ?: 0L).toDouble(),
+        )
         putBoolean(
             "stepsPermissionGranted",
             com.poissoncassant.sculptapp.steps.StepTrackingSupport.hasActivityRecognitionPermission(

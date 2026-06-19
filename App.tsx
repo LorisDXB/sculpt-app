@@ -20,8 +20,11 @@ type SculptSettings = {
   defaultWeight: number;
   hasApiKey: boolean;
   hasValidatedApiKey: boolean;
+  lastSuccessfulStepRefreshAtMillis: number;
   lastValidationMessage: string | null;
-  stepPollingMinutes: number;
+  nextStepRefreshAtMillis: number;
+  stepStatus: string;
+  stepPollingSeconds: number;
   stepSensorAvailable: boolean;
   stepsPermissionGranted: boolean;
   todaySteps: number;
@@ -46,8 +49,11 @@ const fallbackSettingsModule: SculptSettingsModule = {
     defaultWeight: 70,
     hasApiKey: false,
     hasValidatedApiKey: false,
+    lastSuccessfulStepRefreshAtMillis: 0,
     lastValidationMessage: null,
-    stepPollingMinutes: 30,
+    nextStepRefreshAtMillis: 0,
+    stepStatus: 'BASELINE_PENDING',
+    stepPollingSeconds: 1800,
     stepSensorAvailable: true,
     stepsPermissionGranted: true,
     todaySteps: 0,
@@ -58,8 +64,11 @@ const fallbackSettingsModule: SculptSettingsModule = {
     defaultWeight: 70,
     hasApiKey: false,
     hasValidatedApiKey: false,
+    lastSuccessfulStepRefreshAtMillis: 0,
     lastValidationMessage: null,
-    stepPollingMinutes: 30,
+    nextStepRefreshAtMillis: 0,
+    stepStatus: 'BASELINE_PENDING',
+    stepPollingSeconds: 1800,
     stepSensorAvailable: true,
     stepsPermissionGranted: true,
     todaySteps: 0,
@@ -70,8 +79,11 @@ const fallbackSettingsModule: SculptSettingsModule = {
     defaultWeight: 70,
     hasApiKey: false,
     hasValidatedApiKey: false,
+    lastSuccessfulStepRefreshAtMillis: 0,
     lastValidationMessage: null,
-    stepPollingMinutes: 30,
+    nextStepRefreshAtMillis: 0,
+    stepStatus: 'BASELINE_PENDING',
+    stepPollingSeconds: 1800,
     stepSensorAvailable: true,
     stepsPermissionGranted: true,
     todaySteps: 0,
@@ -82,8 +94,11 @@ const fallbackSettingsModule: SculptSettingsModule = {
     defaultWeight: 70,
     hasApiKey: false,
     hasValidatedApiKey: false,
+    lastSuccessfulStepRefreshAtMillis: 0,
     lastValidationMessage: null,
-    stepPollingMinutes: 30,
+    nextStepRefreshAtMillis: 0,
+    stepStatus: 'BASELINE_PENDING',
+    stepPollingSeconds: 1800,
     stepSensorAvailable: true,
     stepsPermissionGranted: true,
     todaySteps: 0,
@@ -94,8 +109,11 @@ const fallbackSettingsModule: SculptSettingsModule = {
     defaultWeight: 70,
     hasApiKey: false,
     hasValidatedApiKey: false,
+    lastSuccessfulStepRefreshAtMillis: 0,
     lastValidationMessage: null,
-    stepPollingMinutes: 30,
+    nextStepRefreshAtMillis: 0,
+    stepStatus: 'BASELINE_PENDING',
+    stepPollingSeconds: 1800,
     stepSensorAvailable: true,
     stepsPermissionGranted: true,
     todaySteps: 0,
@@ -106,8 +124,11 @@ const fallbackSettingsModule: SculptSettingsModule = {
     defaultWeight: 70,
     hasApiKey: false,
     hasValidatedApiKey: false,
+    lastSuccessfulStepRefreshAtMillis: 0,
     lastValidationMessage: null,
-    stepPollingMinutes: 30,
+    nextStepRefreshAtMillis: 0,
+    stepStatus: 'BASELINE_PENDING',
+    stepPollingSeconds: 1800,
     stepSensorAvailable: true,
     stepsPermissionGranted: true,
     todaySteps: 0,
@@ -118,20 +139,26 @@ const fallbackSettingsModule: SculptSettingsModule = {
     defaultWeight: weight,
     hasApiKey: false,
     hasValidatedApiKey: false,
+    lastSuccessfulStepRefreshAtMillis: 0,
     lastValidationMessage: null,
-    stepPollingMinutes: 30,
+    nextStepRefreshAtMillis: 0,
+    stepStatus: 'BASELINE_PENDING',
+    stepPollingSeconds: 1800,
     stepSensorAvailable: true,
     stepsPermissionGranted: true,
     todaySteps: 0,
   }),
-  setStepPollingMinutes: async minutes => ({
+  setStepPollingMinutes: async seconds => ({
     caloriesConsumedToday: 0,
     dailyCalorieTarget: 2500,
     defaultWeight: 70,
     hasApiKey: false,
     hasValidatedApiKey: false,
+    lastSuccessfulStepRefreshAtMillis: Date.now(),
     lastValidationMessage: null,
-    stepPollingMinutes: minutes,
+    nextStepRefreshAtMillis: Date.now() + seconds * 1000,
+    stepStatus: 'READY',
+    stepPollingSeconds: seconds,
     stepSensorAvailable: true,
     stepsPermissionGranted: true,
     todaySteps: 0,
@@ -142,8 +169,11 @@ const fallbackSettingsModule: SculptSettingsModule = {
     defaultWeight: 70,
     hasApiKey: true,
     hasValidatedApiKey: true,
+    lastSuccessfulStepRefreshAtMillis: 0,
     lastValidationMessage: 'API key validated.',
-    stepPollingMinutes: 30,
+    nextStepRefreshAtMillis: 0,
+    stepStatus: 'BASELINE_PENDING',
+    stepPollingSeconds: 1800,
     stepSensorAvailable: true,
     stepsPermissionGranted: true,
     todaySteps: 0,
@@ -165,10 +195,34 @@ function App(): React.JSX.Element {
   const [isRefreshingSteps, setIsRefreshingSteps] = useState(false);
   const [isRunningMaintenance, setIsRunningMaintenance] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [nowMillis, setNowMillis] = useState(Date.now());
 
   useEffect(() => {
     loadSettings();
   }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNowMillis(Date.now());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (!settings?.nextStepRefreshAtMillis) {
+      return;
+    }
+
+    if (settings.nextStepRefreshAtMillis > nowMillis) {
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      loadSettings();
+    }, 1500);
+
+    return () => clearTimeout(timeout);
+  }, [nowMillis, settings?.nextStepRefreshAtMillis]);
 
   const loadSettings = async () => {
     try {
@@ -259,14 +313,14 @@ function App(): React.JSX.Element {
     }
   };
 
-  const saveStepPollingMinutes = async (minutes: number) => {
+  const saveStepPollingMinutes = async (seconds: number) => {
     setIsSavingStepPolling(true);
     setStatusMessage(null);
 
     try {
-      const nextSettings = await sculptSettings.setStepPollingMinutes(minutes);
+      const nextSettings = await sculptSettings.setStepPollingMinutes(seconds);
       setSettings(nextSettings);
-      setStatusMessage(`Step refresh set to every ${minutes} minutes.`);
+      setStatusMessage(`Step refresh set to every ${formatPollingOption(seconds)}.`);
     } catch {
       setStatusMessage('Could not update step refresh interval.');
     } finally {
@@ -363,6 +417,7 @@ function App(): React.JSX.Element {
       : 0;
   const accentColor = accentFromProgress(progress);
   const accentSoft = withAlpha(accentColor, 0.18);
+  const refreshCountdown = formatCountdown((settings?.nextStepRefreshAtMillis ?? 0) - nowMillis);
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -498,21 +553,29 @@ function App(): React.JSX.Element {
               {settings?.stepsPermissionGranted ? 'granted' : 'required'}
             </Text>
           </Text>
+          <Text style={styles.cardBody}>
+            Status:{' '}
+            <Text style={styles.inlineHighlight}>{formatStepStatus(settings?.stepStatus)}</Text>
+          </Text>
+          <Text style={styles.cardBody}>
+            Next automatic refresh in{' '}
+            <Text style={styles.inlineHighlight}>{refreshCountdown}</Text>.
+          </Text>
           <View style={styles.optionRow}>
-            {STEP_POLLING_OPTIONS.map(minutes => {
-              const isSelected = settings?.stepPollingMinutes === minutes;
+            {STEP_POLLING_OPTIONS.map(seconds => {
+              const isSelected = settings?.stepPollingSeconds === seconds;
               return (
                 <Pressable
-                  key={minutes}
+                  key={seconds}
                   disabled={isSavingStepPolling}
-                  onPress={() => saveStepPollingMinutes(minutes)}
+                  onPress={() => saveStepPollingMinutes(seconds)}
                   style={({pressed}) => [
                     styles.optionChip,
                     isSelected && {borderColor: accentColor, backgroundColor: accentSoft},
                     (pressed || isSavingStepPolling) && styles.buttonPressed,
                   ]}>
                   <Text style={[styles.optionChipText, isSelected && {color: '#f8fafc'}]}>
-                    {minutes}m
+                    {formatPollingOption(seconds)}
                   </Text>
                 </Pressable>
               );
@@ -771,7 +834,49 @@ function formatWeight(weight: number): string {
   return weight.toFixed(1);
 }
 
-const STEP_POLLING_OPTIONS = [15, 30, 60, 120];
+const STEP_POLLING_OPTIONS = [30, 15 * 60, 30 * 60, 60 * 60, 120 * 60];
+
+function formatPollingOption(seconds: number): string {
+  if (seconds < 60) {
+    return `${seconds}s`;
+  }
+
+  const minutes = seconds / 60;
+  return `${minutes}m`;
+}
+
+function formatStepStatus(status?: string | null): string {
+  switch (status) {
+    case 'READY':
+      return 'Ready';
+    case 'BASELINE_PENDING':
+      return 'Waiting for baseline';
+    case 'STALE_READING':
+      return 'Using last reading';
+    case 'READ_FAILED':
+      return 'Read failed';
+    case 'PERMISSION_REQUIRED':
+      return 'Permission required';
+    case 'SENSOR_UNAVAILABLE':
+      return 'Sensor unavailable';
+    default:
+      return 'Unknown';
+  }
+}
+
+function formatCountdown(milliseconds: number): string {
+  if (milliseconds <= 0) {
+    return 'due now';
+  }
+
+  const totalSeconds = Math.ceil(milliseconds / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes <= 0) {
+    return `${seconds}s`;
+  }
+  return `${minutes}m ${String(seconds).padStart(2, '0')}s`;
+}
 
 function hsvToHex(h: number, s: number, v: number): string {
   const c = v * s;

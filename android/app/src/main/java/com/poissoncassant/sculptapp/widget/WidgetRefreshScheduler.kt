@@ -8,11 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.util.Log
-import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.PeriodicWorkRequestBuilder
-import androidx.work.WorkManager
 import com.poissoncassant.sculptapp.config.AppConfigRepository
-import com.poissoncassant.sculptapp.steps.StepRefreshWorker
 import com.poissoncassant.sculptapp.steps.StepTrackingStatus
 import com.poissoncassant.sculptapp.steps.StepTrackingSupport
 import java.time.ZoneId
@@ -20,9 +16,9 @@ import java.time.ZonedDateTime
 import java.util.concurrent.TimeUnit
 
 object WidgetRefreshScheduler {
-  fun syncSchedules(context: Context) {
+  fun syncSchedules(context: Context, forceStepReschedule: Boolean = false) {
     scheduleNextMidnightRefresh(context)
-    scheduleStepRefresh(context)
+    scheduleStepRefresh(context, forceStepReschedule)
   }
 
   fun scheduleNextMidnightRefresh(context: Context) {
@@ -74,24 +70,65 @@ object WidgetRefreshScheduler {
         }
   }
 
-  private fun scheduleStepRefresh(context: Context) {
+  private fun scheduleStepRefresh(context: Context, forceReschedule: Boolean) {
     val appContext = context.applicationContext
-    val workManager = WorkManager.getInstance(appContext)
-    if (!hasActiveWidgets(appContext) || StepTrackingSupport.resolveStatus(appContext) != StepTrackingStatus.READY) {
-      Log.d(TAG, "Canceling step refresh work because widget or steps tracking is unavailable")
-      workManager.cancelUniqueWork(STEP_REFRESH_WORK_NAME)
+    val configRepository = AppConfigRepository(appContext)
+    val alarmManager = appContext.getSystemService(AlarmManager::class.java) ?: return
+    val pendingIntent = buildStepRefreshPendingIntent(appContext)
+    val hasWidgets = hasActiveWidgets(appContext)
+    val supportStatus = StepTrackingSupport.resolveStatus(appContext)
+    Log.d(
+        TAG,
+        "scheduleStepRefresh forceReschedule=$forceReschedule hasWidgets=$hasWidgets supportStatus=$supportStatus existingTriggerAtMillis=${configRepository.getNextStepRefreshAtMillis()}",
+    )
+    if (!hasWidgets || supportStatus != StepTrackingStatus.READY) {
+      Log.d(
+          TAG,
+          "Canceling step refresh work because widget or steps tracking is unavailable hasWidgets=$hasWidgets supportStatus=$supportStatus",
+      )
+      alarmManager.cancel(pendingIntent)
+      configRepository.clearNextStepRefreshAtMillis()
       return
     }
 
-    val pollingMinutes = AppConfigRepository(appContext).getStepPollingMinutes().toLong()
-    val request =
-        PeriodicWorkRequestBuilder<StepRefreshWorker>(pollingMinutes, TimeUnit.MINUTES).build()
-    workManager.enqueueUniquePeriodicWork(
-        STEP_REFRESH_WORK_NAME,
-        ExistingPeriodicWorkPolicy.UPDATE,
-        request,
+    val pollingSeconds = configRepository.getStepPollingSeconds()
+    val existingTriggerAtMillis = configRepository.getNextStepRefreshAtMillis()
+    val shouldKeepExisting =
+        !forceReschedule &&
+            existingTriggerAtMillis != null &&
+            existingTriggerAtMillis > System.currentTimeMillis()
+    if (shouldKeepExisting) {
+      Log.d(
+          TAG,
+          "Keeping existing step refresh schedule triggerAtMillis=$existingTriggerAtMillis pollingSeconds=$pollingSeconds",
+      )
+      return
+    }
+
+    val triggerAtMillis = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(pollingSeconds.toLong())
+    configRepository.saveNextStepRefreshAtMillis(triggerAtMillis)
+    alarmManager.cancel(pendingIntent)
+    Log.d(
+        TAG,
+        "Scheduling step refresh triggerAtMillis=$triggerAtMillis pollingSeconds=$pollingSeconds forceReschedule=$forceReschedule",
     )
-    Log.d(TAG, "Scheduled periodic step refresh every ${pollingMinutes}m")
+    runCatching {
+          alarmManager.setExactAndAllowWhileIdle(
+              AlarmManager.RTC_WAKEUP,
+              triggerAtMillis,
+              pendingIntent,
+          )
+          Log.d(TAG, "Scheduled step refresh with setExactAndAllowWhileIdle")
+        }
+        .getOrElse {
+          Log.w(TAG, "Exact step refresh scheduling failed, falling back", it)
+          alarmManager.setAndAllowWhileIdle(
+              AlarmManager.RTC_WAKEUP,
+              triggerAtMillis,
+              pendingIntent,
+          )
+          Log.d(TAG, "Scheduled step refresh with setAndAllowWhileIdle fallback")
+        }
   }
 
   private fun hasActiveWidgets(context: Context): Boolean {
@@ -113,7 +150,20 @@ object WidgetRefreshScheduler {
     )
   }
 
+  private fun buildStepRefreshPendingIntent(context: Context): PendingIntent {
+    val intent =
+        Intent(context, CalorieWidgetProvider::class.java).apply {
+          action = CalorieWidgetProvider.ACTION_STEP_REFRESH
+        }
+    return PendingIntent.getBroadcast(
+        context,
+        REQUEST_STEP_REFRESH,
+        intent,
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
+  }
+
   private const val REQUEST_MIDNIGHT_REFRESH = 1008
-  private const val STEP_REFRESH_WORK_NAME = "sculpt_widget_step_refresh"
+  private const val REQUEST_STEP_REFRESH = 1009
   private const val TAG = "SculptWidgetRefresh"
 }

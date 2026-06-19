@@ -3,9 +3,8 @@ package com.poissoncassant.sculptapp.widget
 import android.content.Context
 import android.util.Log
 import com.poissoncassant.sculptapp.config.AppConfigRepository
-import com.poissoncassant.sculptapp.steps.StepSnapshotReader
-import com.poissoncassant.sculptapp.steps.StepTrackingStatus
-import com.poissoncassant.sculptapp.steps.StepTrackingSupport
+import com.poissoncassant.sculptapp.steps.StepRefreshCoordinator
+import com.poissoncassant.sculptapp.steps.StepTrackingRepository
 import java.io.File
 import java.time.Instant
 import java.time.LocalDate
@@ -30,7 +29,7 @@ class WidgetStateRepository(context: Context) {
       storedDate != today -> {
         Log.d(TAG, "Date rollover detected storedDate=$storedDate newDate=$today, resetting daily state")
         val previousState = readPersistedState(storedDate)
-        clearStepDayState()
+        StepRefreshCoordinator(appContext).resetForNewDay(reason = "date_rollover")
         val resetState =
             defaultState(today).copy(
                 dailyCalorieTarget = previousState.dailyCalorieTarget,
@@ -164,7 +163,7 @@ class WidgetStateRepository(context: Context) {
   fun resetToday() {
     val current = readState()
     val today = LocalDate.now(ZoneId.systemDefault()).toString()
-    clearStepDayState()
+    StepRefreshCoordinator(appContext).resetForNewDay(reason = "manual_reset")
     persistState(
         defaultState(today).copy(
             dailyCalorieTarget = current.dailyCalorieTarget,
@@ -181,38 +180,13 @@ class WidgetStateRepository(context: Context) {
   }
 
   fun refreshTodayStepsFromSensor() {
-    if (StepTrackingSupport.resolveStatus(appContext) != StepTrackingStatus.READY) {
-      return
-    }
-
-    val sensorTotal = StepSnapshotReader.readCurrentTotal(appContext) ?: return
-    val current = readState()
-    val lastRefreshDate = preferences.getString(KEY_STEP_LAST_REFRESH_DATE, null)
-    val previousSensorTotal =
-        if (preferences.contains(KEY_STEP_LAST_SENSOR_TOTAL)) {
-          preferences.getInt(KEY_STEP_LAST_SENSOR_TOTAL, 0)
-        } else {
-          null
-        }
-    val nextTodaySteps =
-        if (lastRefreshDate == current.date && previousSensorTotal != null && sensorTotal >= previousSensorTotal) {
-          (preferences.getInt(KEY_TODAY_STEPS, 0) + (sensorTotal - previousSensorTotal)).coerceAtLeast(0)
-        } else {
-          0
-        }
-
-    preferences
-        .edit()
-        .putString(KEY_STEP_LAST_REFRESH_DATE, current.date)
-        .putInt(KEY_STEP_LAST_SENSOR_TOTAL, sensorTotal)
-        .putInt(KEY_TODAY_STEPS, nextTodaySteps)
-        .putLong(KEY_STEP_LAST_UPDATED_AT, System.currentTimeMillis())
-        .apply()
+    StepTrackingRepository(appContext).refreshCurrentStepSnapshot()
   }
 
   fun clearAllLocalData() {
     deleteStoredCaptureFiles()
     preferences.edit().clear().apply()
+    StepTrackingRepository(appContext).clearAll()
   }
 
   fun markAnalysisStarted() {
@@ -465,22 +439,13 @@ class WidgetStateRepository(context: Context) {
   }
 
   private fun buildStepPanel(): StepPanelState {
-    val lastUpdatedAt =
-        if (preferences.contains(KEY_STEP_LAST_UPDATED_AT)) {
-          preferences.getLong(KEY_STEP_LAST_UPDATED_AT, 0L)
-        } else {
-          null
-        }
-    val todaySteps =
-        preferences
-            .getString(KEY_STEP_LAST_REFRESH_DATE, null)
-            ?.takeIf { it == LocalDate.now(ZoneId.systemDefault()).toString() }
-            ?.let { preferences.getInt(KEY_TODAY_STEPS, 0).coerceAtLeast(0) }
+    val snapshot = StepTrackingRepository(appContext).readSnapshot()
 
     return StepPanelState(
-        todaySteps = todaySteps,
-        lastUpdatedAtMillis = lastUpdatedAt,
-        status = StepTrackingSupport.resolveStatus(appContext),
+        todaySteps = snapshot.todaySteps,
+        lastUpdatedAtMillis = snapshot.lastUpdatedAtMillis,
+        lastSuccessfulRefreshAtMillis = snapshot.lastSuccessfulRefreshAtMillis,
+        status = snapshot.status,
     )
   }
 
@@ -522,16 +487,6 @@ class WidgetStateRepository(context: Context) {
 
   private fun weightHistoryKey(date: String): String = "$KEY_WEIGHT_HISTORY_PREFIX$date"
 
-  private fun clearStepDayState() {
-    preferences
-        .edit()
-        .remove(KEY_TODAY_STEPS)
-        .remove(KEY_STEP_LAST_SENSOR_TOTAL)
-        .remove(KEY_STEP_LAST_REFRESH_DATE)
-        .remove(KEY_STEP_LAST_UPDATED_AT)
-        .apply()
-  }
-
   private fun deleteStoredCaptureFiles() {
     deleteFileIfExists(preferences.getString(KEY_LAST_CAPTURED_RAW_PATH, null))
     deleteFileIfExists(preferences.getString(KEY_LAST_CAPTURED_COMPRESSED_PATH, null))
@@ -569,11 +524,6 @@ class WidgetStateRepository(context: Context) {
     private const val KEY_LAST_CAPTURED_COMPRESSED_PATH = "last_captured_compressed_path"
     private const val KEY_ANALYSIS_STATUS = "analysis_status"
     private const val KEY_ANALYSIS_MESSAGE = "analysis_message"
-    private const val KEY_TODAY_STEPS = "today_steps"
-    private const val KEY_STEP_LAST_SENSOR_TOTAL = "step_last_sensor_total"
-    private const val KEY_STEP_LAST_REFRESH_DATE = "step_last_refresh_date"
-    private const val KEY_STEP_LAST_UPDATED_AT = "step_last_updated_at"
-
     private const val DEFAULT_DAILY_TARGET = 2500
     private const val DEFAULT_ADJUSTMENT_STEP = 50
     private const val DEFAULT_SELECTED_WEIGHT_DIGIT_INDEX = 3

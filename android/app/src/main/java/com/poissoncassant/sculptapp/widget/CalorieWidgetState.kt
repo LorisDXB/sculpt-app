@@ -56,5 +56,6 @@ enum class WeightSource {
 data class StepPanelState(
     val todaySteps: Int?,
     val lastUpdatedAtMillis: Long?,
+    val lastSuccessfulRefreshAtMillis: Long?,
     val status: StepTrackingStatus,
 )

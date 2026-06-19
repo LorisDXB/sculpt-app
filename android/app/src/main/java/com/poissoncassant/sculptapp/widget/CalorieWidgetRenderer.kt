@@ -188,13 +188,20 @@ object CalorieWidgetRenderer {
   ) {
     val valueText =
         when (stepPanel.status) {
-          StepTrackingStatus.READY -> stepPanel.todaySteps?.let { formatSteps(it) } ?: STEP_PLACEHOLDER
+          StepTrackingStatus.READY,
+          StepTrackingStatus.BASELINE_PENDING,
+          StepTrackingStatus.STALE_READING,
+          StepTrackingStatus.READ_FAILED ->
+              stepPanel.todaySteps?.let { formatSteps(it) } ?: STEP_PLACEHOLDER
           StepTrackingStatus.PERMISSION_REQUIRED,
           StepTrackingStatus.SENSOR_UNAVAILABLE -> STEP_PLACEHOLDER
         }
     val statusText =
         when (stepPanel.status) {
-          StepTrackingStatus.READY -> context.getString(R.string.widget_steps_label)
+          StepTrackingStatus.READY,
+          StepTrackingStatus.BASELINE_PENDING,
+          StepTrackingStatus.STALE_READING,
+          StepTrackingStatus.READ_FAILED -> context.getString(R.string.widget_steps_label)
           StepTrackingStatus.PERMISSION_REQUIRED -> context.getString(R.string.widget_steps_permission_required)
           StepTrackingStatus.SENSOR_UNAVAILABLE -> context.getString(R.string.widget_steps_unavailable)
         }

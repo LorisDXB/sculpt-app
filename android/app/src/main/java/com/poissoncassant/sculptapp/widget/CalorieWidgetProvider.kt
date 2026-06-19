@@ -5,6 +5,7 @@ import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import com.poissoncassant.sculptapp.steps.StepRefreshCoordinator
 
 class CalorieWidgetProvider : AppWidgetProvider() {
   override fun onUpdate(
@@ -40,6 +41,25 @@ class CalorieWidgetProvider : AppWidgetProvider() {
       }
       ACTION_MIDNIGHT_REFRESH -> {
         CalorieWidgetRenderer.refreshAll(context)
+      }
+      ACTION_STEP_REFRESH -> {
+        val pendingResult = goAsync()
+        Log.d(
+            TAG,
+            "Automatic step refresh alarm fired, dispatching async refresh thread=${Thread.currentThread().name}",
+        )
+        Thread {
+          try {
+            Log.d(TAG, "Automatic step refresh worker thread started thread=${Thread.currentThread().name}")
+            StepRefreshCoordinator(context).refreshNow(reason = "alarm")
+            Log.d(TAG, "Automatic step refresh worker thread completed")
+          } catch (throwable: Throwable) {
+            Log.e(TAG, "Automatic step refresh worker thread failed", throwable)
+          } finally {
+            Log.d(TAG, "Automatic step refresh worker thread finishing pendingResult")
+            pendingResult.finish()
+          }
+        }.start()
       }
       ACTION_NO_OP -> Unit
       ACTION_CYCLE_STEP -> {
@@ -109,6 +129,8 @@ class CalorieWidgetProvider : AppWidgetProvider() {
         "com.poissoncassant.sculptapp.widget.ACTION_RESET_TODAY"
     const val ACTION_MIDNIGHT_REFRESH =
         "com.poissoncassant.sculptapp.widget.ACTION_MIDNIGHT_REFRESH"
+    const val ACTION_STEP_REFRESH =
+        "com.poissoncassant.sculptapp.widget.ACTION_STEP_REFRESH"
     const val EXTRA_WEIGHT_DIGIT_INDEX = "weight_digit_index"
     private const val DEFAULT_WEIGHT_DIGIT_INDEX = 3
     private const val TAG = "SculptWidgetProvider"

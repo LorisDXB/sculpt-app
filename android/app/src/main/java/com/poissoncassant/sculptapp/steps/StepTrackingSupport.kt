@@ -12,6 +12,9 @@ enum class StepTrackingStatus {
   READY,
   PERMISSION_REQUIRED,
   SENSOR_UNAVAILABLE,
+  BASELINE_PENDING,
+  STALE_READING,
+  READ_FAILED,
 }
 
 object StepTrackingSupport {
