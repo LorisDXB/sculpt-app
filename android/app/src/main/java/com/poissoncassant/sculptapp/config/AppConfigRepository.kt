@@ -45,10 +45,12 @@ class AppConfigRepository(context: Context) {
   }
 
   fun saveDefaultWeightTenths(weightTenths: Int) {
-    preferences
+    val committed =
+        preferences
         .edit()
         .putInt(KEY_DEFAULT_WEIGHT_TENTHS, weightTenths.coerceIn(0, MAX_WEIGHT_TENTHS))
-        .apply()
+        .commit()
+    android.util.Log.d("SculptAppConfig", "saveDefaultWeightTenths committed=$committed weightTenths=$weightTenths")
   }
 
   fun saveStepPollingSeconds(stepPollingSeconds: Int) {

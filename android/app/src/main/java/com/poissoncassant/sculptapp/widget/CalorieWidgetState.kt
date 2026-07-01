@@ -50,6 +50,7 @@ data class WeightPanelState(
 enum class WeightSource {
   TODAY,
   YESTERDAY,
+  HISTORY,
   DEFAULT,
 }
 

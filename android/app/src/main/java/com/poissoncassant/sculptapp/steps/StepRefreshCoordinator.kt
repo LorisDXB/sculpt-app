@@ -9,19 +9,26 @@ class StepRefreshCoordinator(context: Context) {
   private val appContext = context.applicationContext
   private val repository = StepTrackingRepository(appContext)
 
-  fun refreshNow(reason: String, forceStepReschedule: Boolean = false): StepTrackingSnapshot {
-    Log.d(TAG, "refreshNow reason=$reason forceStepReschedule=$forceStepReschedule")
+  fun refreshNow(
+      reason: String,
+      forceStepReschedule: Boolean = false,
+      forceFullWidgetRedraw: Boolean = false,
+  ): StepTrackingSnapshot {
+    Log.d(
+        TAG,
+        "refreshNow reason=$reason forceStepReschedule=$forceStepReschedule forceFullWidgetRedraw=$forceFullWidgetRedraw",
+    )
     val beforeSnapshot = repository.readSnapshot()
     Log.d(
         TAG,
-        "refreshNow before reason=$reason status=${beforeSnapshot.status} todaySteps=${beforeSnapshot.todaySteps} baseline=${beforeSnapshot.baselineTotal} lastSeen=${beforeSnapshot.lastSeenTotal}",
+        "refreshNow before reason=$reason status=${beforeSnapshot.status} todaySteps=${beforeSnapshot.todaySteps} carried=${beforeSnapshot.carriedTodaySteps} baseline=${beforeSnapshot.baselineTotal} lastSeen=${beforeSnapshot.lastSeenTotal}",
     )
     val snapshot = repository.refreshCurrentStepSnapshot()
     WidgetRefreshScheduler.syncSchedules(appContext, forceStepReschedule = forceStepReschedule)
-    CalorieWidgetRenderer.refreshAll(appContext)
+    CalorieWidgetRenderer.refreshAll(appContext, usePartialUpdate = !forceFullWidgetRedraw)
     Log.d(
         TAG,
-        "refreshNow completed reason=$reason status=${snapshot.status} todaySteps=${snapshot.todaySteps} baseline=${snapshot.baselineTotal} lastSeen=${snapshot.lastSeenTotal} lastSuccessAt=${snapshot.lastSuccessfulRefreshAtMillis}",
+        "refreshNow completed reason=$reason status=${snapshot.status} todaySteps=${snapshot.todaySteps} carried=${snapshot.carriedTodaySteps} baseline=${snapshot.baselineTotal} lastSeen=${snapshot.lastSeenTotal} lastSuccessAt=${snapshot.lastSuccessfulRefreshAtMillis}",
     )
     return snapshot
   }

@@ -100,6 +100,7 @@ class WidgetStateRepository(context: Context) {
         current = current,
         todayWeightTenths = current.weightPanel.todayWeightTenths,
         selectedDigitIndex = index,
+        commit = true,
     )
   }
 
@@ -157,6 +158,7 @@ class WidgetStateRepository(context: Context) {
         current = current,
         todayWeightTenths = nextWeightTenths,
         selectedDigitIndex = selectedIndex,
+        commit = true,
     )
   }
 
@@ -334,43 +336,55 @@ class WidgetStateRepository(context: Context) {
           stepPanel = buildStepPanel(),
       )
 
-  private fun persistState(state: CalorieWidgetState) {
-    preferences
-        .edit()
-        .putString(KEY_DATE, state.date)
-        .putInt(KEY_DAILY_CALORIE_TARGET, state.dailyCalorieTarget)
-        .putInt(KEY_CALORIES_CONSUMED_TODAY, state.caloriesConsumedToday)
-        .putInt(KEY_TOTAL_PROTEIN_GRAMS, state.totalProteinGrams)
-        .putInt(KEY_TOTAL_CARBS_GRAMS, state.totalCarbsGrams)
-        .putInt(KEY_TOTAL_FAT_GRAMS, state.totalFatGrams)
-        .putInt(KEY_ADJUSTMENT_STEP, state.adjustmentStep)
-        .putInt(KEY_SELECTED_WEIGHT_DIGIT_INDEX, state.weightPanel.selectedDigitIndex)
-        .putBoolean(KEY_HAS_LAST_MEAL, state.lastMeal != null)
-        .putString(KEY_ANALYSIS_STATUS, state.analysisStatus.name)
-        .apply {
-          persistStoredWeightTenthsForDate(state.date, state.weightPanel.todayWeightTenths)
-          if (state.analysisMessage.isNullOrBlank()) {
-            remove(KEY_ANALYSIS_MESSAGE)
-          } else {
-            putString(KEY_ANALYSIS_MESSAGE, state.analysisMessage)
-          }
-          if (state.lastMeal == null) {
-            remove(KEY_LAST_MEAL_TIMESTAMP)
-            remove(KEY_LAST_MEAL_NAME)
-            remove(KEY_LAST_MEAL_CALORIES)
-            remove(KEY_PROTEIN_GRAMS)
-            remove(KEY_CARBS_GRAMS)
-            remove(KEY_FAT_GRAMS)
-          } else {
-            putString(KEY_LAST_MEAL_TIMESTAMP, state.lastMeal.timestamp)
-            putString(KEY_LAST_MEAL_NAME, state.lastMeal.mealName)
-            putInt(KEY_LAST_MEAL_CALORIES, state.lastMeal.calories)
-            putInt(KEY_PROTEIN_GRAMS, state.lastMeal.proteinGrams)
-            putInt(KEY_CARBS_GRAMS, state.lastMeal.carbsGrams)
-            putInt(KEY_FAT_GRAMS, state.lastMeal.fatGrams)
-          }
-        }
-        .apply()
+  private fun persistState(state: CalorieWidgetState, commit: Boolean = false) {
+    val editor =
+        preferences
+            .edit()
+            .putString(KEY_DATE, state.date)
+            .putInt(KEY_DAILY_CALORIE_TARGET, state.dailyCalorieTarget)
+            .putInt(KEY_CALORIES_CONSUMED_TODAY, state.caloriesConsumedToday)
+            .putInt(KEY_TOTAL_PROTEIN_GRAMS, state.totalProteinGrams)
+            .putInt(KEY_TOTAL_CARBS_GRAMS, state.totalCarbsGrams)
+            .putInt(KEY_TOTAL_FAT_GRAMS, state.totalFatGrams)
+            .putInt(KEY_ADJUSTMENT_STEP, state.adjustmentStep)
+            .putInt(KEY_SELECTED_WEIGHT_DIGIT_INDEX, state.weightPanel.selectedDigitIndex)
+            .putBoolean(KEY_HAS_LAST_MEAL, state.lastMeal != null)
+            .putString(KEY_ANALYSIS_STATUS, state.analysisStatus.name)
+
+    if (state.weightPanel.todayWeightTenths == null) {
+      editor.remove(weightHistoryKey(state.date))
+    } else {
+      editor.putInt(weightHistoryKey(state.date), state.weightPanel.todayWeightTenths.coerceIn(0, MAX_WEIGHT_TENTHS))
+    }
+
+    if (state.analysisMessage.isNullOrBlank()) {
+      editor.remove(KEY_ANALYSIS_MESSAGE)
+    } else {
+      editor.putString(KEY_ANALYSIS_MESSAGE, state.analysisMessage)
+    }
+
+    if (state.lastMeal == null) {
+      editor.remove(KEY_LAST_MEAL_TIMESTAMP)
+      editor.remove(KEY_LAST_MEAL_NAME)
+      editor.remove(KEY_LAST_MEAL_CALORIES)
+      editor.remove(KEY_PROTEIN_GRAMS)
+      editor.remove(KEY_CARBS_GRAMS)
+      editor.remove(KEY_FAT_GRAMS)
+    } else {
+      editor.putString(KEY_LAST_MEAL_TIMESTAMP, state.lastMeal.timestamp)
+      editor.putString(KEY_LAST_MEAL_NAME, state.lastMeal.mealName)
+      editor.putInt(KEY_LAST_MEAL_CALORIES, state.lastMeal.calories)
+      editor.putInt(KEY_PROTEIN_GRAMS, state.lastMeal.proteinGrams)
+      editor.putInt(KEY_CARBS_GRAMS, state.lastMeal.carbsGrams)
+      editor.putInt(KEY_FAT_GRAMS, state.lastMeal.fatGrams)
+    }
+
+    if (commit) {
+      val committed = editor.commit()
+      Log.d(TAG, "persistState commit=$committed date=${state.date} todayWeight=${state.weightPanel.todayWeightTenths}")
+    } else {
+      editor.apply()
+    }
   }
 
   private fun defaultState(date: String): CalorieWidgetState =
@@ -398,6 +412,7 @@ class WidgetStateRepository(context: Context) {
       current: CalorieWidgetState,
       todayWeightTenths: Int?,
       selectedDigitIndex: Int,
+      commit: Boolean = false,
   ) {
     persistState(
         current.copy(
@@ -408,6 +423,7 @@ class WidgetStateRepository(context: Context) {
                     selectedDigitIndex = selectedDigitIndex,
                 ),
         ),
+        commit = commit,
     )
   }
 
@@ -418,15 +434,33 @@ class WidgetStateRepository(context: Context) {
   ): WeightPanelState {
     val defaultWeightTenths = AppConfigRepository(appContext).getDefaultWeightTenths()
     val localDate = LocalDate.parse(date)
-    val yesterdayWeightTenths = readStoredWeightTenthsForDate(localDate.minusDays(1).toString())
-    val lastWeekWeightTenths = readStoredWeightTenthsForDate(localDate.minusDays(7).toString())
-    val displayedWeightTenths = todayWeightTenths ?: yesterdayWeightTenths ?: defaultWeightTenths
+    val nearestRecentWeight =
+        findMostRecentWeightEntry(localDate, maxLookbackDays = DISPLAY_HISTORY_LOOKBACK_DAYS)
+    val yesterdayWeightTenths =
+        findNearestWeightTenths(
+            localDate = localDate,
+            preferredDaysAgo = 1,
+            toleranceDays = YESTERDAY_TOLERANCE_DAYS,
+        )
+    val lastWeekWeightTenths =
+        findNearestWeightTenths(
+            localDate = localDate,
+            preferredDaysAgo = 7,
+            toleranceDays = LAST_WEEK_TOLERANCE_DAYS,
+        )
+    val displayedWeightTenths = todayWeightTenths ?: nearestRecentWeight?.weightTenths ?: defaultWeightTenths
     val displayedWeightSource =
         when {
           todayWeightTenths != null -> WeightSource.TODAY
-          yesterdayWeightTenths != null -> WeightSource.YESTERDAY
+          nearestRecentWeight?.daysAgo == 1 -> WeightSource.YESTERDAY
+          nearestRecentWeight != null -> WeightSource.HISTORY
           else -> WeightSource.DEFAULT
         }
+
+    Log.d(
+        TAG,
+        "buildWeightPanel date=$date todayWeight=$todayWeightTenths displayedWeight=$displayedWeightTenths displayedSource=$displayedWeightSource yesterdayComparison=$yesterdayWeightTenths lastWeekComparison=$lastWeekWeightTenths",
+    )
 
     return WeightPanelState(
         todayWeightTenths = todayWeightTenths,
@@ -456,16 +490,34 @@ class WidgetStateRepository(context: Context) {
         preferences.getInt(weightHistoryKey(date), 0).coerceIn(0, MAX_WEIGHT_TENTHS)
       }
 
-  private fun persistStoredWeightTenthsForDate(date: String, value: Int?) {
-    if (value == null) {
-      preferences.edit().remove(weightHistoryKey(date)).apply()
-      return
+  private fun findMostRecentWeightEntry(localDate: LocalDate, maxLookbackDays: Int): WeightHistoryEntry? {
+    for (daysAgo in 1..maxLookbackDays) {
+      val weightTenths = readStoredWeightTenthsForDate(localDate.minusDays(daysAgo.toLong()).toString())
+      if (weightTenths != null) {
+        return WeightHistoryEntry(daysAgo = daysAgo, weightTenths = weightTenths)
+      }
     }
 
-    preferences
-        .edit()
-        .putInt(weightHistoryKey(date), value.coerceIn(0, MAX_WEIGHT_TENTHS))
-        .apply()
+    return null
+  }
+
+  private fun findNearestWeightTenths(
+      localDate: LocalDate,
+      preferredDaysAgo: Int,
+      toleranceDays: Int,
+  ): Int? {
+    val minimumDaysAgo = maxOf(1, preferredDaysAgo - toleranceDays)
+    val maximumDaysAgo = preferredDaysAgo + toleranceDays
+
+    return (minimumDaysAgo..maximumDaysAgo)
+        .mapNotNull { daysAgo ->
+          readStoredWeightTenthsForDate(localDate.minusDays(daysAgo.toLong()).toString())?.let { weightTenths ->
+            Triple(kotlin.math.abs(daysAgo - preferredDaysAgo), daysAgo, weightTenths)
+          }
+        }
+        .sortedWith(compareBy<Triple<Int, Int, Int>> { it.first }.thenBy { it.second })
+        .firstOrNull()
+        ?.third
   }
 
   private fun digitsForWeightTenths(weightTenths: Int): IntArray {
@@ -484,6 +536,11 @@ class WidgetStateRepository(context: Context) {
         IntArray(WEIGHT_DIGIT_COUNT) { index -> digits.getOrElse(index) { 0 }.mod(10) }
     return ((normalized[0] * 100) + (normalized[1] * 10) + normalized[2]) * 10 + normalized[3]
   }
+
+  private data class WeightHistoryEntry(
+      val daysAgo: Int,
+      val weightTenths: Int,
+  )
 
   private fun weightHistoryKey(date: String): String = "$KEY_WEIGHT_HISTORY_PREFIX$date"
 
@@ -526,6 +583,9 @@ class WidgetStateRepository(context: Context) {
     private const val KEY_ANALYSIS_MESSAGE = "analysis_message"
     private const val DEFAULT_DAILY_TARGET = 2500
     private const val DEFAULT_ADJUSTMENT_STEP = 50
+    private const val DISPLAY_HISTORY_LOOKBACK_DAYS = 14
+    private const val YESTERDAY_TOLERANCE_DAYS = 2
+    private const val LAST_WEEK_TOLERANCE_DAYS = 2
     private const val DEFAULT_SELECTED_WEIGHT_DIGIT_INDEX = 3
     private const val WEIGHT_DIGIT_COUNT = 4
     private const val MAX_WEIGHT_TENTHS = 9999

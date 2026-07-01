@@ -35,12 +35,29 @@ class CalorieWidgetProvider : AppWidgetProvider() {
     when (intent.action) {
       Intent.ACTION_DATE_CHANGED,
       Intent.ACTION_TIME_CHANGED,
-      Intent.ACTION_TIMEZONE_CHANGED,
+      Intent.ACTION_TIMEZONE_CHANGED -> {
+        // Day rollovers can change the progress gradient, so these paths need a full redraw.
+        CalorieWidgetRenderer.refreshAll(context, usePartialUpdate = false)
+      }
       Intent.ACTION_BOOT_COMPLETED -> {
-        CalorieWidgetRenderer.refreshAll(context)
+        val pendingResult = goAsync()
+        Thread {
+          try {
+            StepRefreshCoordinator(context).refreshNow(
+                reason = "boot_completed",
+                forceStepReschedule = true,
+                forceFullWidgetRedraw = true,
+            )
+          } catch (throwable: Throwable) {
+            Log.e(TAG, "Boot-completed refresh failed", throwable)
+            CalorieWidgetRenderer.refreshAll(context, usePartialUpdate = false)
+          } finally {
+            pendingResult.finish()
+          }
+        }.start()
       }
       ACTION_MIDNIGHT_REFRESH -> {
-        CalorieWidgetRenderer.refreshAll(context)
+        CalorieWidgetRenderer.refreshAll(context, usePartialUpdate = false)
       }
       ACTION_STEP_REFRESH -> {
         val pendingResult = goAsync()
@@ -95,7 +112,7 @@ class CalorieWidgetProvider : AppWidgetProvider() {
       ACTION_SELECT_WEIGHT_DIGIT -> {
         val digitIndex = intent.getIntExtra(EXTRA_WEIGHT_DIGIT_INDEX, DEFAULT_WEIGHT_DIGIT_INDEX)
         WidgetStateRepository(context).selectWeightDigit(digitIndex)
-        CalorieWidgetRenderer.refreshAll(context)
+        CalorieWidgetRenderer.refreshAll(context, usePartialUpdate = false)
       }
       ACTION_LOG_SAMPLE_MEAL -> {
         WidgetStateRepository(context).logSampleMeal()

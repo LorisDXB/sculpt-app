@@ -5,6 +5,7 @@ data class StepTrackingSnapshot(
     val todaySteps: Int,
     val status: StepTrackingStatus,
     val baselineTotal: Int?,
+    val carriedTodaySteps: Int,
     val lastSeenTotal: Int?,
     val lastUpdatedAtMillis: Long?,
     val lastSuccessfulRefreshAtMillis: Long?,

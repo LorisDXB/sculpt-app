@@ -16,7 +16,7 @@ class StepTrackingRepository(context: Context) {
     return buildSnapshot(today).also { snapshot ->
       Log.d(
           TAG,
-          "readSnapshot date=${snapshot.date} status=${snapshot.status} todaySteps=${snapshot.todaySteps} baseline=${snapshot.baselineTotal} lastSeen=${snapshot.lastSeenTotal} lastUpdatedAt=${snapshot.lastUpdatedAtMillis} lastSuccessAt=${snapshot.lastSuccessfulRefreshAtMillis} error=${snapshot.errorMessage}",
+          "readSnapshot date=${snapshot.date} status=${snapshot.status} todaySteps=${snapshot.todaySteps} carried=${snapshot.carriedTodaySteps} baseline=${snapshot.baselineTotal} lastSeen=${snapshot.lastSeenTotal} lastUpdatedAt=${snapshot.lastUpdatedAtMillis} lastSuccessAt=${snapshot.lastSuccessfulRefreshAtMillis} error=${snapshot.errorMessage}",
       )
     }
   }
@@ -26,7 +26,7 @@ class StepTrackingRepository(context: Context) {
     ensureCurrentDay(today)
     Log.d(
         TAG,
-        "refreshCurrentStepSnapshot start date=$today storedStatus=${preferences.getString(KEY_STATUS, null)} storedTodaySteps=${storedInt(KEY_TODAY_STEPS)} baseline=${storedInt(KEY_BASELINE_TOTAL)} lastSeen=${storedInt(KEY_LAST_SEEN_TOTAL)}",
+        "refreshCurrentStepSnapshot start date=$today storedStatus=${preferences.getString(KEY_STATUS, null)} storedTodaySteps=${storedInt(KEY_TODAY_STEPS)} carried=${storedInt(KEY_CARRIED_TODAY_STEPS)} baseline=${storedInt(KEY_BASELINE_TOTAL)} lastSeen=${storedInt(KEY_LAST_SEEN_TOTAL)}",
     )
     val supportStatus = StepTrackingSupport.resolveStatus(appContext)
     if (supportStatus != StepTrackingStatus.READY) {
@@ -50,6 +50,8 @@ class StepTrackingRepository(context: Context) {
 
     val now = System.currentTimeMillis()
     val baselineTotal = storedInt(KEY_BASELINE_TOTAL)
+    val lastSeenTotal = storedInt(KEY_LAST_SEEN_TOTAL)
+    val carriedTodaySteps = storedInt(KEY_CARRIED_TODAY_STEPS) ?: 0
     return if (baselineTotal == null) {
       Log.d(TAG, "Initializing daily baseline date=$today baselineTotal=$sensorTotal")
       preferences
@@ -57,7 +59,8 @@ class StepTrackingRepository(context: Context) {
           .putString(KEY_DATE, today)
           .putInt(KEY_BASELINE_TOTAL, sensorTotal)
           .putInt(KEY_LAST_SEEN_TOTAL, sensorTotal)
-          .putInt(KEY_TODAY_STEPS, 0)
+          .putInt(KEY_CARRIED_TODAY_STEPS, carriedTodaySteps.coerceAtLeast(0))
+          .putInt(KEY_TODAY_STEPS, carriedTodaySteps.coerceAtLeast(0))
           .putLong(KEY_LAST_UPDATED_AT, now)
           .putLong(KEY_LAST_SUCCESSFUL_REFRESH_AT, now)
           .putString(KEY_STATUS, StepTrackingStatus.BASELINE_PENDING.name)
@@ -66,19 +69,50 @@ class StepTrackingRepository(context: Context) {
       buildSnapshot(today).also { snapshot ->
         Log.d(
             TAG,
-            "refreshCurrentStepSnapshot baseline_initialized date=${snapshot.date} status=${snapshot.status} todaySteps=${snapshot.todaySteps} baseline=${snapshot.baselineTotal} lastSeen=${snapshot.lastSeenTotal}",
+            "refreshCurrentStepSnapshot baseline_initialized date=${snapshot.date} status=${snapshot.status} todaySteps=${snapshot.todaySteps} carried=${snapshot.carriedTodaySteps} baseline=${snapshot.baselineTotal} lastSeen=${snapshot.lastSeenTotal}",
         )
       }
     } else {
-      val todaySteps = (sensorTotal - baselineTotal).coerceAtLeast(0)
+      val currentDisplayedTotal = storedInt(KEY_TODAY_STEPS)?.coerceAtLeast(0) ?: carriedTodaySteps
+      val counterResetDetected =
+          listOfNotNull(lastSeenTotal, baselineTotal).any { previousTotal -> sensorTotal < previousTotal }
+      if (counterResetDetected) {
+        val preservedTodaySteps = maxOf(currentDisplayedTotal, carriedTodaySteps).coerceAtLeast(0)
+        Log.w(
+            TAG,
+            "Detected step counter reset date=$today sensorTotal=$sensorTotal baselineTotal=$baselineTotal lastSeenTotal=$lastSeenTotal preservingTodaySteps=$preservedTodaySteps",
+        )
+        preferences
+            .edit()
+            .putString(KEY_DATE, today)
+            .putInt(KEY_BASELINE_TOTAL, sensorTotal)
+            .putInt(KEY_LAST_SEEN_TOTAL, sensorTotal)
+            .putInt(KEY_CARRIED_TODAY_STEPS, preservedTodaySteps)
+            .putInt(KEY_TODAY_STEPS, preservedTodaySteps)
+            .putLong(KEY_LAST_UPDATED_AT, now)
+            .putLong(KEY_LAST_SUCCESSFUL_REFRESH_AT, now)
+            .putString(KEY_STATUS, StepTrackingStatus.READY.name)
+            .remove(KEY_ERROR_MESSAGE)
+            .apply()
+        return buildSnapshot(today).also { snapshot ->
+          Log.d(
+              TAG,
+              "refreshCurrentStepSnapshot counter_reset_recovered date=${snapshot.date} status=${snapshot.status} todaySteps=${snapshot.todaySteps} carried=${snapshot.carriedTodaySteps} baseline=${snapshot.baselineTotal} lastSeen=${snapshot.lastSeenTotal}",
+          )
+        }
+      }
+
+      val todaySteps =
+          (carriedTodaySteps + (sensorTotal - baselineTotal).coerceAtLeast(0)).coerceAtLeast(0)
       Log.d(
           TAG,
-          "Derived today steps date=$today sensorTotal=$sensorTotal baselineTotal=$baselineTotal todaySteps=$todaySteps",
+          "Derived today steps date=$today sensorTotal=$sensorTotal carriedTodaySteps=$carriedTodaySteps baselineTotal=$baselineTotal todaySteps=$todaySteps",
       )
       preferences
           .edit()
           .putString(KEY_DATE, today)
           .putInt(KEY_LAST_SEEN_TOTAL, sensorTotal)
+          .putInt(KEY_CARRIED_TODAY_STEPS, carriedTodaySteps.coerceAtLeast(0))
           .putInt(KEY_TODAY_STEPS, todaySteps)
           .putLong(KEY_LAST_UPDATED_AT, now)
           .putLong(KEY_LAST_SUCCESSFUL_REFRESH_AT, now)
@@ -88,7 +122,7 @@ class StepTrackingRepository(context: Context) {
       buildSnapshot(today).also { snapshot ->
         Log.d(
             TAG,
-            "refreshCurrentStepSnapshot success date=${snapshot.date} status=${snapshot.status} todaySteps=${snapshot.todaySteps} baseline=${snapshot.baselineTotal} lastSeen=${snapshot.lastSeenTotal} lastUpdatedAt=${snapshot.lastUpdatedAtMillis}",
+            "refreshCurrentStepSnapshot success date=${snapshot.date} status=${snapshot.status} todaySteps=${snapshot.todaySteps} carried=${snapshot.carriedTodaySteps} baseline=${snapshot.baselineTotal} lastSeen=${snapshot.lastSeenTotal} lastUpdatedAt=${snapshot.lastUpdatedAtMillis}",
         )
       }
     }
@@ -102,6 +136,7 @@ class StepTrackingRepository(context: Context) {
         .putString(KEY_DATE, today)
         .remove(KEY_BASELINE_TOTAL)
         .remove(KEY_LAST_SEEN_TOTAL)
+        .remove(KEY_CARRIED_TODAY_STEPS)
         .putInt(KEY_TODAY_STEPS, 0)
         .remove(KEY_LAST_UPDATED_AT)
         .remove(KEY_LAST_SUCCESSFUL_REFRESH_AT)
@@ -143,6 +178,7 @@ class StepTrackingRepository(context: Context) {
         todaySteps = preferences.getInt(KEY_TODAY_STEPS, 0).coerceAtLeast(0),
         status = effectiveStatus,
         baselineTotal = storedInt(KEY_BASELINE_TOTAL),
+        carriedTodaySteps = preferences.getInt(KEY_CARRIED_TODAY_STEPS, 0).coerceAtLeast(0),
         lastSeenTotal = storedInt(KEY_LAST_SEEN_TOTAL),
         lastUpdatedAtMillis = storedLong(KEY_LAST_UPDATED_AT),
         lastSuccessfulRefreshAtMillis = storedLong(KEY_LAST_SUCCESSFUL_REFRESH_AT),
@@ -185,6 +221,7 @@ class StepTrackingRepository(context: Context) {
     private const val PREFERENCES_NAME = "sculpt_step_tracking"
     private const val KEY_DATE = "step_day_date"
     private const val KEY_BASELINE_TOTAL = "step_day_baseline_total"
+    private const val KEY_CARRIED_TODAY_STEPS = "step_carried_today_steps"
     private const val KEY_LAST_SEEN_TOTAL = "step_last_seen_total"
     private const val KEY_TODAY_STEPS = "step_today_steps"
     private const val KEY_LAST_UPDATED_AT = "step_last_updated_at"
