@@ -64,6 +64,7 @@
     <string name="saved_meals_invalid_number">Saisissez un nombre entier positif ou nul.</string>
     <string name="saved_meals_row">%1$s\n%2$d kcal · P %3$d g · G %4$d g · L %5$d g</string>
     <string name="saved_meals_log_error">Impossible d’ajouter le repas. Vérifiez les valeurs ou sélectionnez à nouveau les repas.</string>
+    <string name="saved_meals_selection_summary">Ajout de %1$d kcal · P %2$d g · G %3$d g · L %4$d g\n%5$d kcal restantes après l’ajout</string>
     <plurals name="saved_meals_count">
         <item quantity="one">%d repas</item>
         <item quantity="other">%d repas</item>

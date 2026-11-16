@@ -64,6 +64,7 @@
     <string name="saved_meals_invalid_number">Enter a non-negative whole number.</string>
     <string name="saved_meals_row">%1$s\n%2$d kcal · P %3$d g · C %4$d g · F %5$d g</string>
     <string name="saved_meals_log_error">Could not add the meal. Check the values or select the saved meals again.</string>
+    <string name="saved_meals_selection_summary">Adding %1$d kcal · P %2$d g · C %3$d g · F %4$d g\n%5$d kcal remaining after adding</string>
     <plurals name="saved_meals_count">
         <item quantity="one">%d meal</item>
         <item quantity="other">%d meals</item>

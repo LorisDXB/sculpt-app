@@ -168,6 +168,13 @@ class SavedMealsActivity : ComponentActivity() {
     body.addView(empty)
     val list = ListView(this).apply { choiceMode = ListView.CHOICE_MODE_MULTIPLE }
     body.addView(list, LinearLayout.LayoutParams(-1, 0, 1f))
+    val selectionSummary = TextView(this).apply {
+      setTextColor(Color.WHITE)
+      setBackgroundResource(R.drawable.capture_status_background)
+      setPadding(dp(12), dp(8), dp(12), dp(8))
+      accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
+    }
+    body.addView(selectionSummary, LinearLayout.LayoutParams(-1, -2))
 
     var visibleMeals = emptyList<SavedMeal>()
     fun filter(query: String) {
@@ -182,24 +189,39 @@ class SavedMealsActivity : ComponentActivity() {
       empty.visibility = if (visibleMeals.isEmpty()) View.VISIBLE else View.GONE
     }
 
-    fun updateSaveButton() {
-      saveButton.isEnabled = selectedIds.isNotEmpty()
-      saveButton.alpha = if (saveButton.isEnabled) 1f else 0.5f
-      saveButton.text = if (selectedIds.isEmpty()) {
-        getString(R.string.saved_meals_log_selected)
-      } else {
+    fun updateSelection() {
+      val hasSelection = selectedIds.isNotEmpty()
+      saveButton.isEnabled = hasSelection
+      saveButton.alpha = if (hasSelection) 1f else 0.5f
+      saveButton.text = if (hasSelection) {
         getString(R.string.saved_meals_log_count, selectedIds.size)
+      } else {
+        getString(R.string.saved_meals_log_selected)
       }
+      selectionSummary.visibility = if (hasSelection) View.VISIBLE else View.GONE
+      if (!hasSelection) return
+
+      val selectedMeals = meals.filter { it.id in selectedIds }
+      val calories = selectedMeals.sumOf { it.calories.toLong() }
+      val remainingAfter = repository.readState().caloriesRemaining.toLong() - calories
+      selectionSummary.text = getString(
+          R.string.saved_meals_selection_summary,
+          calories,
+          selectedMeals.sumOf { it.proteinGrams.toLong() },
+          selectedMeals.sumOf { it.carbsGrams.toLong() },
+          selectedMeals.sumOf { it.fatGrams.toLong() },
+          remainingAfter,
+      )
     }
 
     list.setOnItemClickListener { _, _, position, _ ->
       val id = visibleMeals[position].id
       if (list.isItemChecked(position)) selectedIds.add(id) else selectedIds.remove(id)
-      updateSaveButton()
+      updateSelection()
     }
     search.doAfterTextChanged { filter(it.toString()) }
     filter(search.text.toString())
-    updateSaveButton()
+    updateSelection()
     saveButton.setOnClickListener {
       if (submitted || selectedIds.isEmpty()) return@setOnClickListener
       val count = selectedIds.size
