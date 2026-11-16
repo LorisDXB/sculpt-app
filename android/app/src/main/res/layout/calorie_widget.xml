@@ -447,18 +447,6 @@
                     android:src="@drawable/ic_widget_history" />
 
                 <ImageButton
-                    android:id="@+id/widget_ai_lookup_button"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginStart="6dp"
-                    android:background="@drawable/widget_button_background"
-                    android:contentDescription="@string/widget_ai_lookup"
-                    android:paddingVertical="10dp"
-                    android:scaleType="centerInside"
-                    android:src="@drawable/ic_widget_ai_lookup" />
-
-                <ImageButton
                     android:id="@+id/widget_custom_meal_button"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
@@ -469,6 +457,18 @@
                     android:paddingVertical="10dp"
                     android:scaleType="centerInside"
                     android:src="@drawable/ic_widget_custom_meal" />
+
+                <ImageButton
+                    android:id="@+id/widget_ai_lookup_button"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="6dp"
+                    android:background="@drawable/widget_button_background"
+                    android:contentDescription="@string/widget_ai_lookup"
+                    android:paddingVertical="10dp"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_widget_ai_lookup" />
             </LinearLayout>
 
             <TextView

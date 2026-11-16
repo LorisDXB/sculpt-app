@@ -5,7 +5,7 @@ import android.graphics.LinearGradient
 import android.graphics.Shader
 
 internal object CalorieGradient {
-  fun createShader(state: CalorieWidgetState, width: Int, height: Int): LinearGradient {
+  fun accentColor(state: CalorieWidgetState): Int {
     val progress =
         if (state.dailyCalorieTarget <= 0) {
           1f
@@ -13,7 +13,11 @@ internal object CalorieGradient {
           (state.caloriesConsumedToday.toFloat() / state.dailyCalorieTarget).coerceIn(0f, 1f)
         }
     val accentHue = 135f - (135f * progress)
-    val accentColor = Color.HSVToColor(floatArrayOf(accentHue, 0.72f, 0.88f))
+    return Color.HSVToColor(floatArrayOf(accentHue, 0.72f, 0.88f))
+  }
+
+  fun createShader(state: CalorieWidgetState, width: Int, height: Int): LinearGradient {
+    val accentColor = accentColor(state)
     val midColor = blendColors(Color.parseColor("#0A1324"), accentColor, 0.48f)
     val baseColor = Color.parseColor("#08111F")
 

@@ -94,21 +94,15 @@ class NutritionApiClient {
       """
       You are estimating nutrition from a meal photo for personal calorie tracking.
 
-      Return one best estimate for the visible meal.
+      Return one best estimate for what the user consumed.
 
-      The image is the primary source of truth.
+      Treat explicit user details about the amount eaten, leftovers, and ingredients as authoritative. If the user says they ate half or skipped the sauce, estimate that portion even if the whole meal is visible. Use the photo to identify the foods and estimate details the user did not provide.
 
-      Use spoken context only to refine ambiguous details such as portion size, hidden ingredients, oils, sauces, leftovers, or whether only part of the meal was eaten. Ignore spoken context when it clearly conflicts with the image.
+      Use legible nutrition labels, weights, volumes, and serving counts when available. Scale per-serving values to the amount consumed rather than assuming the whole package was eaten.
 
-      Assume the user consumed all visible foods and drinks. Count all visible items, sides, drinks, and repeated units exactly once.
+      If the user did not specify what they ate, assume they consumed the visible serving. Count each food, side, drink, and repeated unit once. Include oils, sauces, and other ingredients when the photo, user details, or typical preparation support them. Avoid counting ingredients already included in a nutrition label or a prepared dish estimate.
 
-      For packaged, boxed, plated, takeout, or combo meals, assume the visible container represents the intended serving unless the image or transcript indicates otherwise.
-
-      Use visible labels, weights, volumes, serving counts, and nutrition information when legible.
-
-      Include hidden calories from oils, sauces, dressings, cheese, butter, and cooking fat when plausible.
-
-      Avoid optimistic low estimates. When uncertain, prefer a realistic midpoint-to-upper estimate.
+      When uncertain, choose a realistic midpoint. Use lower confidence when the portion or ingredients are difficult to judge.
 
       If the image is not food, return meal_name "not food" and all numeric values as 0.
 

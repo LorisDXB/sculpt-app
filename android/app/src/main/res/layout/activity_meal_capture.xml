@@ -21,6 +21,12 @@
         android:scaleType="centerCrop"
         android:visibility="gone" />
 
+    <com.poissoncassant.sculptapp.camera.MealScanOverlay
+        android:id="@+id/camera_scan_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no" />
+
     <TextView
         android:id="@+id/camera_status_text"
         android:layout_width="wrap_content"
@@ -41,6 +47,8 @@
 
     <TextView
         android:id="@+id/camera_transcript_text"
+        android:accessibilityLiveRegion="polite"
+        android:drawablePadding="8dp"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"

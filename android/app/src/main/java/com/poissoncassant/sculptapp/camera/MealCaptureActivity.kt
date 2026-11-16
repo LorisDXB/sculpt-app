@@ -1,6 +1,7 @@
 package com.poissoncassant.sculptapp.camera
 
 import android.Manifest
+import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
@@ -9,14 +10,19 @@ import android.os.Looper
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
+import android.text.InputType
 import android.util.Log
 import android.view.MotionEvent
 import android.view.View
+import android.view.WindowManager
+import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.addCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
@@ -28,16 +34,17 @@ import androidx.core.content.ContextCompat
 import com.poissoncassant.sculptapp.ai.NutritionApiClient
 import com.poissoncassant.sculptapp.R
 import com.poissoncassant.sculptapp.config.AppConfigRepository
+import com.poissoncassant.sculptapp.widget.CalorieGradient
 import com.poissoncassant.sculptapp.widget.CalorieWidgetRenderer
 import com.poissoncassant.sculptapp.widget.WidgetStateRepository
 import java.io.File
 import java.io.IOException
 import java.time.Instant
-import java.util.Locale
 
 class MealCaptureActivity : ComponentActivity() {
   private lateinit var previewView: PreviewView
   private lateinit var capturedPreview: ImageView
+  private lateinit var scanOverlay: MealScanOverlay
   private lateinit var statusText: TextView
   private lateinit var transcriptText: TextView
   private lateinit var backButton: ImageButton
@@ -91,6 +98,7 @@ class MealCaptureActivity : ComponentActivity() {
 
     previewView = findViewById(R.id.camera_preview_view)
     capturedPreview = findViewById(R.id.captured_image_preview)
+    scanOverlay = findViewById(R.id.camera_scan_overlay)
     statusText = findViewById(R.id.camera_status_text)
     transcriptText = findViewById(R.id.camera_transcript_text)
     backButton = findViewById(R.id.camera_back_button)
@@ -106,6 +114,7 @@ class MealCaptureActivity : ComponentActivity() {
         ?.let(::renderCapturedPreview)
 
     bindListeners()
+    onBackPressedDispatcher.addCallback(this) { returnFromCapture() }
     if (hasCameraPermission()) {
       startCamera()
     } else {
@@ -130,7 +139,8 @@ class MealCaptureActivity : ComponentActivity() {
     super.onDestroy()
   }
 
-  override fun onBackPressed() {
+  private fun returnFromCapture() {
+    if (isSubmittingAnalysis) return
     if (isReviewingCapture) {
       discardCurrentCapture()
       syncUiState()
@@ -140,14 +150,8 @@ class MealCaptureActivity : ComponentActivity() {
   }
 
   private fun bindListeners() {
-    backButton.setOnClickListener {
-      if (isReviewingCapture) {
-        discardCurrentCapture()
-        syncUiState()
-      } else {
-        finish()
-      }
-    }
+    backButton.setOnClickListener { returnFromCapture() }
+    transcriptText.setOnClickListener { editTranscript() }
 
     primaryButton.setOnClickListener {
       if (isReviewingCapture) {
@@ -274,10 +278,11 @@ class MealCaptureActivity : ComponentActivity() {
       return
     }
 
+    val widgetState = WidgetStateRepository(this)
+    scanOverlay.setScanColor(CalorieGradient.accentColor(widgetState.readState()))
     isSubmittingAnalysis = true
-    WidgetStateRepository(this).markAnalysisStarted()
-    CalorieWidgetRenderer.refreshAll(this)
     syncUiState()
+    widgetState.markAnalysisStarted()
     Log.d(
         TAG,
         "Starting in-activity meal analysis for $rawPhotoPath withTranscript=${!transcript.isNullOrBlank()}",
@@ -285,6 +290,7 @@ class MealCaptureActivity : ComponentActivity() {
 
     Thread {
       runCatching {
+            CalorieWidgetRenderer.refreshAll(applicationContext)
             val apiKey = AppConfigRepository(this).getApiKey()
             if (apiKey.isNullOrBlank()) {
               throw IOException("No validated API key available")
@@ -326,6 +332,7 @@ class MealCaptureActivity : ComponentActivity() {
           .onSuccess {
             runOnUiThread {
               isSubmittingAnalysis = false
+              scanOverlay.setScanning(false)
               pendingPhotoPath = null
               voiceTranscript = null
               Toast.makeText(this, "Meal analyzed and added.", Toast.LENGTH_SHORT).show()
@@ -363,6 +370,17 @@ class MealCaptureActivity : ComponentActivity() {
   }
 
   private fun syncUiState() {
+    backButton.isEnabled = !isSubmittingAnalysis
+    backButton.alpha = if (isSubmittingAnalysis) 0.45f else 1f
+    val canEditTranscript = isReviewingCapture && !isSubmittingAnalysis && !isRecordingVoice &&
+        !stopRequested && !voiceTranscript.isNullOrBlank()
+    transcriptText.isClickable = canEditTranscript
+    transcriptText.isFocusable = canEditTranscript
+    transcriptText.setCompoundDrawablesRelativeWithIntrinsicBounds(
+        0, 0, if (canEditTranscript) R.drawable.ic_saved_meal_edit else 0, 0,
+    )
+    scanOverlay.setScanning(isSubmittingAnalysis)
+
     if (isReviewingCapture && !pendingPhotoPath.isNullOrBlank()) {
       capturedPreview.visibility = View.VISIBLE
       statusText.visibility = View.GONE
@@ -379,7 +397,7 @@ class MealCaptureActivity : ComponentActivity() {
         transcriptText.visibility = View.VISIBLE
         transcriptText.text = getString(R.string.widget_analysis_in_progress)
       } else {
-      updateTranscriptUi()
+        updateTranscriptUi()
       }
     } else {
       stopVoiceCapture()
@@ -439,15 +457,12 @@ class MealCaptureActivity : ComponentActivity() {
     stopRequested = false
     pendingVoiceTranscript = null
     Log.d(TAG, "Starting voice capture")
-    transcriptText.visibility = View.VISIBLE
-    transcriptText.text = getString(R.string.meal_capture_recording_hint)
+    syncUiState()
 
     val recognizerIntent =
         Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-          val preferredLocale = Locale.FRANCE
           putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-          putExtra(RecognizerIntent.EXTRA_LANGUAGE, preferredLocale.toLanguageTag())
-          putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, preferredLocale.toLanguageTag())
+          putExtra(RecognizerIntent.EXTRA_LANGUAGE, resources.configuration.locales[0].toLanguageTag())
           putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
           putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
           putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 800L)
@@ -481,6 +496,34 @@ class MealCaptureActivity : ComponentActivity() {
     } else {
       mainHandler.postDelayed(forceStopVoiceRunnable, 250L)
     }
+  }
+
+  private fun editTranscript() {
+    if (!isReviewingCapture || isSubmittingAnalysis || isRecordingVoice || stopRequested) return
+    val transcript = voiceTranscript ?: return
+    val input = EditText(this).apply {
+      inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or
+          InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+      setText(transcript)
+      setSelection(length())
+    }
+    val container = FrameLayout(this).apply {
+      val inset = (24 * resources.displayMetrics.density).toInt()
+      setPadding(inset, 0, inset, 0)
+      addView(input)
+    }
+    val dialog = AlertDialog.Builder(this)
+        .setTitle(R.string.meal_capture_edit_context)
+        .setView(container)
+        .setNegativeButton(android.R.string.cancel, null)
+        .setPositiveButton(R.string.meal_capture_save_context) { _, _ ->
+          voiceTranscript = input.text.toString().trim().takeIf { it.isNotEmpty() }
+          syncUiState()
+        }
+        .create()
+    input.requestFocus()
+    dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
+    dialog.show()
   }
 
   private fun updateTranscriptUi() {

@@ -40,6 +40,8 @@
     <string name="meal_capture_open_error">Impossible douvrir la camera.</string>
     <string name="meal_capture_take_error">Impossible de prendre cette photo. Reessayez.</string>
     <string name="meal_capture_recording_hint">Vous pouvez maintenant parler pour donner plus de contexte.</string>
+    <string name="meal_capture_edit_context">Modifier le contexte du repas</string>
+    <string name="meal_capture_save_context">Enregistrer le contexte</string>
     <string name="meal_capture_transcript_prefix">Contexte : %1$s</string>
     <string name="meal_capture_audio_permission_needed">Lautorisation microphone est requise pour le contexte vocal.</string>
     <string name="meal_capture_audio_permission_denied">Lautorisation microphone a ete refusee.</string>
