@@ -43,6 +43,14 @@
         android:exported="false"
         android:launchMode="singleTop" />
 
+      <activity
+        android:name=".meals.SavedMealsActivity"
+        android:excludeFromRecents="true"
+        android:exported="false"
+        android:taskAffinity="${applicationId}.savedmeals"
+        android:theme="@style/SavedMealsTheme"
+        android:windowSoftInputMode="adjustResize" />
+
       <provider
         android:name="androidx.core.content.FileProvider"
         android:authorities="${applicationId}.fileprovider"

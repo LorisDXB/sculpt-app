@@ -17,6 +17,7 @@ import android.util.Log
 import android.util.TypedValue
 import android.widget.RemoteViews
 import com.poissoncassant.sculptapp.AddMealEntryActivity
+import com.poissoncassant.sculptapp.meals.SavedMealsActivity
 import com.poissoncassant.sculptapp.R
 import com.poissoncassant.sculptapp.steps.StepTrackingStatus
 import java.text.NumberFormat
@@ -259,7 +260,19 @@ object CalorieWidgetRenderer {
   }
 
   private fun bindTapTargets(context: Context, views: RemoteViews) {
-    views.setOnClickPendingIntent(R.id.widget_open_app_button, buildOpenAppPendingIntent(context))
+    views.setOnClickPendingIntent(
+        R.id.widget_history_button,
+        buildMealEntryPendingIntent(context, REQUEST_MEAL_HISTORY,
+            Intent(context, SavedMealsActivity::class.java).setAction(SavedMealsActivity.ACTION_HISTORY)),
+    )
+    views.setOnClickPendingIntent(
+        R.id.widget_ai_lookup_button,
+        buildMealEntryPendingIntent(context, REQUEST_OPEN_APP, Intent(context, AddMealEntryActivity::class.java)),
+    )
+    views.setOnClickPendingIntent(
+        R.id.widget_custom_meal_button,
+        buildMealEntryPendingIntent(context, REQUEST_CUSTOM_MEAL, Intent(context, SavedMealsActivity::class.java)),
+    )
     views.setOnClickPendingIntent(
         R.id.widget_remaining_increase_zone,
         buildBroadcastPendingIntent(
@@ -333,18 +346,16 @@ object CalorieWidgetRenderer {
     }
   }
 
-  private fun buildOpenAppPendingIntent(context: Context): PendingIntent {
-    val intent =
-        Intent(context, AddMealEntryActivity::class.java).apply {
-          flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-        }
-    return PendingIntent.getActivity(
-        context,
-        REQUEST_OPEN_APP,
-        intent,
-        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-    )
-  }
+  private fun buildMealEntryPendingIntent(
+      context: Context,
+      requestCode: Int,
+      intent: Intent,
+  ): PendingIntent = PendingIntent.getActivity(
+      context,
+      requestCode,
+      intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+      PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+  )
 
   private fun buildBroadcastPendingIntent(
       context: Context,
@@ -418,7 +429,6 @@ object CalorieWidgetRenderer {
     views.setTextViewTextSize(R.id.widget_weight_vs_last_week, TypedValue.COMPLEX_UNIT_SP, presentation.weightComparisonSp)
     WEIGHT_DIGIT_VIEW_IDS.forEach { views.setTextViewTextSize(it, TypedValue.COMPLEX_UNIT_SP, presentation.weightDigitSp) }
     views.setTextViewTextSize(R.id.widget_weight_separator, TypedValue.COMPLEX_UNIT_SP, presentation.weightDigitSp - 2f)
-    views.setTextViewTextSize(R.id.widget_open_app_button, TypedValue.COMPLEX_UNIT_SP, presentation.buttonSp)
     views.setTextViewTextSize(R.id.widget_step_button, TypedValue.COMPLEX_UNIT_SP, presentation.buttonSp)
     views.setInt(R.id.widget_section_label, "setMaxLines", presentation.labelMaxLines)
     views.setInt(R.id.widget_remaining_meta, "setMaxLines", presentation.metaMaxLines)
@@ -438,13 +448,8 @@ object CalorieWidgetRenderer {
         0,
         0,
     )
-    views.setViewPadding(
-        R.id.widget_open_app_button,
-        dpToPx(context, presentation.buttonHorizontalPaddingDp),
-        dpToPx(context, presentation.buttonVerticalPaddingDp),
-        dpToPx(context, presentation.buttonHorizontalPaddingDp),
-        dpToPx(context, presentation.buttonVerticalPaddingDp),
-    )
+    val mealButtonPadding = dpToPx(context, presentation.buttonVerticalPaddingDp)
+    MEAL_BUTTON_IDS.forEach { views.setViewPadding(it, 0, mealButtonPadding, 0, mealButtonPadding) }
     views.setViewPadding(
         R.id.widget_step_button,
         dpToPx(context, presentation.buttonHorizontalPaddingDp),
@@ -672,6 +677,13 @@ object CalorieWidgetRenderer {
   private const val REQUEST_INCREASE_LAST_MEAL = 1005
   private const val REQUEST_DECREASE_LAST_MEAL = 1006
   private const val REQUEST_NO_OP = 1007
+  private const val REQUEST_MEAL_HISTORY = 1008
+  private const val REQUEST_CUSTOM_MEAL = 1009
+  private val MEAL_BUTTON_IDS = intArrayOf(
+      R.id.widget_history_button,
+      R.id.widget_ai_lookup_button,
+      R.id.widget_custom_meal_button,
+  )
   private const val REQUEST_SELECT_WEIGHT_DIGIT_BASE = 1100
   private const val MAX_WEIGHT_TENTHS = 9999
   private const val STEP_PLACEHOLDER = "--"

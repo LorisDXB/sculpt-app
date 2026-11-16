@@ -19,7 +19,6 @@
     <string name="widget_no_meal_secondary">Prendre une photo</string>
     <string name="widget_step_button_format">Pas %1$d</string>
     <string name="widget_step_button_busy">Occupe</string>
-    <string name="widget_add_meal">Ajouter repas</string>
     <string name="widget_hint_plus">+</string>
     <string name="widget_hint_minus">-</string>
     <string name="widget_analysis_in_progress">Analyse du repas</string>
@@ -47,4 +46,26 @@
     <string name="meal_capture_voice_unavailable">La reconnaissance vocale nest pas disponible sur cet appareil.</string>
     <string name="meal_capture_voice_too_short">Aucun contexte vocal capture.</string>
     <string name="meal_capture_voice_error">Impossible de capturer le contexte vocal. Reessayez.</string>
+    <string name="widget_history">Historique des repas</string>
+    <string name="widget_ai_lookup">Analyse de repas par IA</string>
+    <string name="widget_custom_meal">Repas personnalisé</string>
+    <string name="saved_meals_name">Nom du repas</string>
+    <string name="saved_meals_calories">Calories (kcal)</string>
+    <string name="saved_meals_protein">Protéines (g)</string>
+    <string name="saved_meals_carbs">Glucides (g)</string>
+    <string name="saved_meals_fat">Lipides (g)</string>
+    <string name="saved_meals_save">Enregistrer le repas</string>
+    <string name="saved_meals_search">Rechercher des repas</string>
+    <string name="saved_meals_empty">Aucun repas enregistré.</string>
+    <string name="saved_meals_no_results">Aucun repas ne correspond à la recherche.</string>
+    <string name="saved_meals_log_selected">Ajouter les repas sélectionnés</string>
+    <string name="saved_meals_log_count">Ajouter la sélection (%1$d)</string>
+    <string name="saved_meals_required">Saisissez le nom du repas.</string>
+    <string name="saved_meals_invalid_number">Saisissez un nombre entier positif ou nul.</string>
+    <string name="saved_meals_row">%1$s\n%2$d kcal · P %3$d g · G %4$d g · L %5$d g</string>
+    <string name="saved_meals_log_error">Impossible d’ajouter le repas. Vérifiez les valeurs ou sélectionnez à nouveau les repas.</string>
+    <plurals name="saved_meals_count">
+        <item quantity="one">%d repas</item>
+        <item quantity="other">%d repas</item>
+    </plurals>
 </resources>

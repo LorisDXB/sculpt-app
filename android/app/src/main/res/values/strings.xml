@@ -18,7 +18,6 @@
     <string name="widget_no_meal">No meal today</string>
     <string name="widget_step_button_format">Step %1$d</string>
     <string name="widget_step_button_busy">Busy</string>
-    <string name="widget_add_meal">Add meal</string>
     <string name="widget_hint_plus">+</string>
     <string name="widget_hint_minus">-</string>
     <string name="widget_analysis_in_progress">Analyzing meal</string>
@@ -47,4 +46,26 @@
     <string name="meal_capture_voice_unavailable">Voice recognition is not available on this device.</string>
     <string name="meal_capture_voice_too_short">No voice context captured.</string>
     <string name="meal_capture_voice_error">Could not capture voice context. Try again.</string>
+    <string name="widget_history">Meal history</string>
+    <string name="widget_ai_lookup">AI meal lookup</string>
+    <string name="widget_custom_meal">Custom meal</string>
+    <string name="saved_meals_name">Meal name</string>
+    <string name="saved_meals_calories">Calories (kcal)</string>
+    <string name="saved_meals_protein">Protein (g)</string>
+    <string name="saved_meals_carbs">Carbs (g)</string>
+    <string name="saved_meals_fat">Fat (g)</string>
+    <string name="saved_meals_save">Save meal</string>
+    <string name="saved_meals_search">Search meals</string>
+    <string name="saved_meals_empty">No saved meals yet.</string>
+    <string name="saved_meals_no_results">No meals match your search.</string>
+    <string name="saved_meals_log_selected">Add selected meals</string>
+    <string name="saved_meals_log_count">Add selected (%1$d)</string>
+    <string name="saved_meals_required">Enter a meal name.</string>
+    <string name="saved_meals_invalid_number">Enter a non-negative whole number.</string>
+    <string name="saved_meals_row">%1$s\n%2$d kcal · P %3$d g · C %4$d g · F %5$d g</string>
+    <string name="saved_meals_log_error">Could not add the meal. Check the values or select the saved meals again.</string>
+    <plurals name="saved_meals_count">
+        <item quantity="one">%d meal</item>
+        <item quantity="other">%d meals</item>
+    </plurals>
 </resources>

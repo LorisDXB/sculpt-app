@@ -427,7 +427,7 @@ function App(): React.JSX.Element {
           <Text style={[styles.eyebrow, {color: accentColor}]}>Sculpt control panel</Text>
           <Text style={styles.title}>
             {requiresKey
-              ? 'Validate your API key to unlock Add meal.'
+              ? 'Validate your API key to unlock AI meal lookup.'
               : 'Widget-first meal logging is ready.'}
           </Text>
           <Text style={styles.body}>
@@ -442,7 +442,7 @@ function App(): React.JSX.Element {
           <Text style={styles.cardBody}>
             {settings?.hasValidatedApiKey
               ? 'Validated and ready for meal capture.'
-              : 'Paste your OpenAI API key and validate it before using Add meal.'}
+              : 'Paste your OpenAI API key and validate it before using AI meal lookup.'}
           </Text>
           <TextInput
             autoCapitalize="none"

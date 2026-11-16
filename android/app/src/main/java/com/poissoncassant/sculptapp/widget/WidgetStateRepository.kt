@@ -3,23 +3,26 @@ package com.poissoncassant.sculptapp.widget
 import android.content.Context
 import android.util.Log
 import com.poissoncassant.sculptapp.config.AppConfigRepository
+import com.poissoncassant.sculptapp.meals.SavedMeal
 import com.poissoncassant.sculptapp.steps.StepRefreshCoordinator
 import com.poissoncassant.sculptapp.steps.StepTrackingRepository
 import java.io.File
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import org.json.JSONArray
+import org.json.JSONObject
 
 class WidgetStateRepository(context: Context) {
   private val appContext = context.applicationContext
   private val preferences =
       appContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
 
-  fun readState(): CalorieWidgetState {
+  fun readState(): CalorieWidgetState = synchronized(preferences) {
     val today = LocalDate.now(ZoneId.systemDefault()).toString()
     val storedDate = preferences.getString(KEY_DATE, null)
 
-    return when {
+    when {
       storedDate == null -> {
         val initialState = defaultState(today)
         persistState(initialState)
@@ -49,7 +52,7 @@ class WidgetStateRepository(context: Context) {
     }
   }
 
-  fun logSampleMeal() {
+  fun logSampleMeal() = synchronized(preferences) {
     val current = readState()
     val sampleIndex = preferences.getInt(KEY_SAMPLE_INDEX, 0)
     val sampleTemplate = SAMPLE_MEALS[sampleIndex % SAMPLE_MEALS.size]
@@ -87,14 +90,14 @@ class WidgetStateRepository(context: Context) {
     preferences.edit().putInt(KEY_SAMPLE_INDEX, (sampleIndex + 1) % SAMPLE_MEALS.size).apply()
   }
 
-  fun cycleAdjustmentStep() {
+  fun cycleAdjustmentStep() = synchronized(preferences) {
     val current = readState()
     val currentIndex = ADJUSTMENT_STEPS.indexOf(current.adjustmentStep).takeIf { it >= 0 } ?: 0
     val nextStep = ADJUSTMENT_STEPS[(currentIndex + 1) % ADJUSTMENT_STEPS.size]
     persistState(current.copy(adjustmentStep = nextStep))
   }
 
-  fun selectWeightDigit(index: Int) {
+  fun selectWeightDigit(index: Int) = synchronized(preferences) {
     val current = readState()
     persistWeightPanel(
         current = current,
@@ -103,48 +106,48 @@ class WidgetStateRepository(context: Context) {
     )
   }
 
-  fun setDailyCalorieTarget(target: Int) {
+  fun setDailyCalorieTarget(target: Int) = synchronized(preferences) {
     val current = readState()
     persistState(current.copy(dailyCalorieTarget = target.coerceAtLeast(0)))
   }
 
-  fun adjustCaloriesRemaining(increase: Boolean) {
+  fun adjustCaloriesRemaining(increase: Boolean) = synchronized(preferences) {
     val current = readState()
     val delta = if (increase) current.adjustmentStep else -current.adjustmentStep
     val nextTarget = (current.dailyCalorieTarget + delta).coerceAtLeast(0)
     persistState(current.copy(dailyCalorieTarget = nextTarget))
   }
 
-  fun adjustLastMealCalories(increase: Boolean) {
+  fun adjustLastMealCalories(increase: Boolean) = synchronized(preferences) {
     val current = readState()
-    val lastMeal = current.lastMeal ?: return
+    val lastMeal = current.lastMeal ?: return@synchronized
     val delta = if (increase) current.adjustmentStep else -current.adjustmentStep
-    val nextMealCalories = (lastMeal.calories + delta).coerceAtLeast(0)
+    val nextMealCalories = (lastMeal.calories.toLong() + delta).coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
     val nextScaledMeal = scaleMeal(lastMeal, nextMealCalories)
     val appliedDelta = nextScaledMeal.calories - lastMeal.calories
-    val nextConsumed = (current.caloriesConsumedToday + appliedDelta).coerceAtLeast(0)
+    val nextConsumed = addNutrition(current.caloriesConsumedToday, appliedDelta).coerceAtLeast(0)
 
     persistState(
         current.copy(
             caloriesConsumedToday = nextConsumed,
             totalProteinGrams =
-                (current.totalProteinGrams + nextScaledMeal.proteinGrams - lastMeal.proteinGrams)
+                addNutrition(current.totalProteinGrams, nextScaledMeal.proteinGrams - lastMeal.proteinGrams)
                     .coerceAtLeast(0),
             totalCarbsGrams =
-                (current.totalCarbsGrams + nextScaledMeal.carbsGrams - lastMeal.carbsGrams)
+                addNutrition(current.totalCarbsGrams, nextScaledMeal.carbsGrams - lastMeal.carbsGrams)
                     .coerceAtLeast(0),
             totalFatGrams =
-                (current.totalFatGrams + nextScaledMeal.fatGrams - lastMeal.fatGrams)
+                addNutrition(current.totalFatGrams, nextScaledMeal.fatGrams - lastMeal.fatGrams)
                     .coerceAtLeast(0),
             lastMeal = nextScaledMeal,
         ),
     )
   }
 
-  fun adjustSelectedWeightDigit(increase: Boolean) {
+  fun adjustSelectedWeightDigit(increase: Boolean) = synchronized(preferences) {
     val current = readState()
     if (!current.isWeightModeAvailable) {
-      return
+      return@synchronized
     }
 
     val digits = digitsForWeightTenths(current.weightPanel.displayedWeightTenths)
@@ -160,7 +163,7 @@ class WidgetStateRepository(context: Context) {
     )
   }
 
-  fun resetToday() {
+  fun resetToday() = synchronized(preferences) {
     val current = readState()
     val today = LocalDate.now(ZoneId.systemDefault()).toString()
     StepRefreshCoordinator(appContext).resetForNewDay(reason = "manual_reset")
@@ -183,13 +186,13 @@ class WidgetStateRepository(context: Context) {
     StepTrackingRepository(appContext).refreshCurrentStepSnapshot()
   }
 
-  fun clearAllLocalData() {
+  fun clearAllLocalData() = synchronized(preferences) {
     deleteStoredCaptureFiles()
     preferences.edit().clear().apply()
     StepTrackingRepository(appContext).clearAll()
   }
 
-  fun markAnalysisStarted() {
+  fun markAnalysisStarted() = synchronized(preferences) {
     val current = readState()
     Log.d(TAG, "markAnalysisStarted date=${current.date} hasLastMeal=${current.lastMeal != null}")
     persistState(
@@ -200,7 +203,7 @@ class WidgetStateRepository(context: Context) {
     )
   }
 
-  fun markAnalysisFailed(message: String) {
+  fun markAnalysisFailed(message: String) = synchronized(preferences) {
     val current = readState()
     Log.d(TAG, "markAnalysisFailed date=${current.date} message=$message")
     persistState(
@@ -211,7 +214,7 @@ class WidgetStateRepository(context: Context) {
     )
   }
 
-  fun clearAnalysisFeedback() {
+  fun clearAnalysisFeedback() = synchronized(preferences) {
     val current = readState()
     Log.d(TAG, "clearAnalysisFeedback date=${current.date}")
     persistState(
@@ -229,32 +232,102 @@ class WidgetStateRepository(context: Context) {
       carbsGrams: Int,
       fatGrams: Int,
       timestamp: String,
-  ) {
-    val current = readState()
+  ) = synchronized(preferences) {
     Log.d(TAG, "logAnalyzedMeal name=$mealName calories=$calories")
-    val sanitizedCalories = calories.coerceAtLeast(0)
-    val nextMeal =
-        LastMealState(
-            timestamp = timestamp,
-            mealName = mealName.ifBlank { "Meal" },
-            calories = sanitizedCalories,
-            proteinGrams = proteinGrams.coerceAtLeast(0),
-            carbsGrams = carbsGrams.coerceAtLeast(0),
-            fatGrams = fatGrams.coerceAtLeast(0),
-        )
-
-    persistState(
-        current.copy(
-            caloriesConsumedToday = (current.caloriesConsumedToday + sanitizedCalories).coerceAtLeast(0),
-            totalProteinGrams = (current.totalProteinGrams + nextMeal.proteinGrams).coerceAtLeast(0),
-            totalCarbsGrams = (current.totalCarbsGrams + nextMeal.carbsGrams).coerceAtLeast(0),
-            totalFatGrams = (current.totalFatGrams + nextMeal.fatGrams).coerceAtLeast(0),
-            lastMeal = nextMeal,
-            analysisStatus = AnalysisStatus.IDLE,
-            analysisMessage = null,
-        ),
+    val meal = LastMealState(
+        timestamp = timestamp,
+        mealName = mealName.ifBlank { "Meal" },
+        calories = calories.coerceAtLeast(0),
+        proteinGrams = proteinGrams.coerceAtLeast(0),
+        carbsGrams = carbsGrams.coerceAtLeast(0),
+        fatGrams = fatGrams.coerceAtLeast(0),
     )
+    persistState(withLoggedMeal(readState(), meal).copy(
+        analysisStatus = AnalysisStatus.IDLE,
+        analysisMessage = null,
+    ))
   }
+
+  fun readSavedMeals(): List<SavedMeal> {
+    val entries = readSavedMealEntries()
+    return List(entries.length()) { index ->
+      val entry = entries.getJSONObject(index)
+      SavedMeal(
+          id = entry.getString("id"),
+          name = entry.getString("name"),
+          calories = entry.getInt("calories"),
+          proteinGrams = entry.getInt("proteinGrams"),
+          carbsGrams = entry.getInt("carbsGrams"),
+          fatGrams = entry.getInt("fatGrams"),
+      )
+    }
+  }
+
+  fun saveAndLogCustomMeal(meal: SavedMeal): Boolean = synchronized(preferences) {
+    val entries = readSavedMealEntries().put(JSONObject()
+        .put("id", meal.id)
+        .put("name", meal.name)
+        .put("calories", meal.calories)
+        .put("proteinGrams", meal.proteinGrams)
+        .put("carbsGrams", meal.carbsGrams)
+        .put("fatGrams", meal.fatGrams))
+    logSavedMeals(meal.name, listOf(meal), entries)
+  }
+
+  fun logSavedSelection(ids: Set<String>, mealName: String): Boolean = synchronized(preferences) {
+    val meals = readSavedMeals().filter { it.id in ids }
+    if (meals.isEmpty() || meals.size != ids.size) return@synchronized false
+    logSavedMeals(meals.singleOrNull()?.name ?: mealName, meals)
+  }
+
+  private fun readSavedMealEntries(): JSONArray =
+      JSONArray(preferences.getString(KEY_SAVED_MEALS, "[]") ?: "[]")
+
+  private fun logSavedMeals(
+      name: String,
+      meals: List<SavedMeal>,
+      updatedCatalog: JSONArray? = null,
+  ): Boolean {
+    val current = readState()
+    val calories = meals.sumOf { it.calories.toLong() }
+    val protein = meals.sumOf { it.proteinGrams.toLong() }
+    val carbs = meals.sumOf { it.carbsGrams.toLong() }
+    val fat = meals.sumOf { it.fatGrams.toLong() }
+
+    if (calories + current.caloriesConsumedToday > Int.MAX_VALUE ||
+        protein + current.totalProteinGrams > Int.MAX_VALUE ||
+        carbs + current.totalCarbsGrams > Int.MAX_VALUE ||
+        fat + current.totalFatGrams > Int.MAX_VALUE) return false
+
+    val meal = LastMealState(
+        timestamp = Instant.now().toString(),
+        mealName = name,
+        calories = calories.toInt(),
+        proteinGrams = protein.toInt(),
+        carbsGrams = carbs.toInt(),
+        fatGrams = fat.toInt(),
+    )
+    val next = withLoggedMeal(current, meal)
+    val state = if (current.analysisStatus == AnalysisStatus.ERROR) {
+      next.copy(analysisStatus = AnalysisStatus.IDLE, analysisMessage = null)
+    } else {
+      next
+    }
+    persistState(state, updatedCatalog)
+    return true
+  }
+
+  private fun withLoggedMeal(state: CalorieWidgetState, meal: LastMealState): CalorieWidgetState =
+      state.copy(
+          caloriesConsumedToday = addNutrition(state.caloriesConsumedToday, meal.calories),
+          totalProteinGrams = addNutrition(state.totalProteinGrams, meal.proteinGrams),
+          totalCarbsGrams = addNutrition(state.totalCarbsGrams, meal.carbsGrams),
+          totalFatGrams = addNutrition(state.totalFatGrams, meal.fatGrams),
+          lastMeal = meal,
+      )
+
+  private fun addNutrition(total: Int, amount: Int): Int =
+      (total.toLong() + amount).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
 
   fun saveCapturedImage(rawImagePath: String?, compressedImagePath: String, capturedAt: String) {
     deleteFileIfExists(preferences.getString(KEY_LAST_CAPTURED_RAW_PATH, null))
@@ -334,7 +407,7 @@ class WidgetStateRepository(context: Context) {
           stepPanel = buildStepPanel(),
       )
 
-  private fun persistState(state: CalorieWidgetState) {
+  private fun persistState(state: CalorieWidgetState, updatedCatalog: JSONArray? = null) {
     preferences
         .edit()
         .putString(KEY_DATE, state.date)
@@ -348,6 +421,9 @@ class WidgetStateRepository(context: Context) {
         .putBoolean(KEY_HAS_LAST_MEAL, state.lastMeal != null)
         .putString(KEY_ANALYSIS_STATUS, state.analysisStatus.name)
         .apply {
+          if (updatedCatalog != null) {
+            putString(KEY_SAVED_MEALS, updatedCatalog.toString())
+          }
           persistStoredWeightTenthsForDate(state.date, state.weightPanel.todayWeightTenths)
           if (state.analysisMessage.isNullOrBlank()) {
             remove(KEY_ANALYSIS_MESSAGE)
@@ -502,6 +578,7 @@ class WidgetStateRepository(context: Context) {
 
   companion object {
     private const val PREFERENCES_NAME = "sculpt_widget_state"
+    private const val KEY_SAVED_MEALS = "saved_manual_meals"
     private const val KEY_DATE = "date"
     private const val KEY_DAILY_CALORIE_TARGET = "daily_calorie_target"
     private const val KEY_CALORIES_CONSUMED_TODAY = "calories_consumed_today"
