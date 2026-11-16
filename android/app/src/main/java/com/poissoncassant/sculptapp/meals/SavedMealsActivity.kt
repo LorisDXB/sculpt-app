@@ -1,6 +1,8 @@
 package com.poissoncassant.sculptapp.meals
 
 import android.graphics.Color
+import android.graphics.drawable.ShapeDrawable
+import android.graphics.drawable.shapes.RectShape
 import android.os.Bundle
 import android.text.InputFilter
 import android.text.InputType
@@ -20,6 +22,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.widget.doAfterTextChanged
 import com.poissoncassant.sculptapp.R
+import com.poissoncassant.sculptapp.widget.CalorieGradient
 import com.poissoncassant.sculptapp.widget.CalorieWidgetRenderer
 import com.poissoncassant.sculptapp.widget.WidgetStateRepository
 import java.util.UUID
@@ -38,10 +41,16 @@ class SavedMealsActivity : ComponentActivity() {
     WindowCompat.setDecorFitsSystemWindows(window, false)
     repository = WidgetStateRepository(this)
     val showHistory = intent.action == ACTION_HISTORY
+    val widgetState = repository.readState()
     val root = LinearLayout(this).apply {
       orientation = LinearLayout.VERTICAL
       isFocusableInTouchMode = true
-      setBackgroundColor(Color.rgb(5, 8, 22))
+      background = ShapeDrawable(RectShape()).apply {
+        shaderFactory = object : ShapeDrawable.ShaderFactory() {
+          override fun resize(width: Int, height: Int) =
+              CalorieGradient.createShader(widgetState, width, height)
+        }
+      }
     }
     val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
     saveButton = Button(this).apply {

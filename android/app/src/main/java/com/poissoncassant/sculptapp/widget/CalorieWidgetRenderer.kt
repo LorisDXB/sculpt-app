@@ -8,10 +8,8 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.RectF
-import android.graphics.Shader
 import android.os.Bundle
 import android.util.Log
 import android.util.TypedValue
@@ -22,7 +20,6 @@ import com.poissoncassant.sculptapp.R
 import com.poissoncassant.sculptapp.steps.StepTrackingStatus
 import java.text.NumberFormat
 import kotlin.math.abs
-import kotlin.math.max
 
 object CalorieWidgetRenderer {
   fun render(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
@@ -555,28 +552,7 @@ object CalorieWidgetRenderer {
       strokeWidth = 3f
     }
 
-    val progress =
-        if (state.dailyCalorieTarget <= 0) {
-          1f
-        } else {
-          (state.caloriesConsumedToday.toFloat() / max(state.dailyCalorieTarget, 1).toFloat())
-              .coerceIn(0f, 1f)
-        }
-    val accentHue = 135f - (135f * progress)
-    val accentColor = Color.HSVToColor(floatArrayOf(accentHue, 0.72f, 0.88f))
-    val midColor = blendColors(Color.parseColor("#0A1324"), accentColor, 0.48f)
-    val baseColor = Color.parseColor("#08111F")
-
-    paint.shader =
-        LinearGradient(
-            0f,
-            0f,
-            width.toFloat(),
-            height.toFloat(),
-            intArrayOf(baseColor, midColor, accentColor),
-            floatArrayOf(0f, 0.62f, 1f),
-            Shader.TileMode.CLAMP,
-        )
+    paint.shader = CalorieGradient.createShader(state, width, height)
 
     val rect = RectF(0f, 0f, width.toFloat(), height.toFloat())
     canvas.drawRoundRect(rect, cornerRadius, cornerRadius, paint)
@@ -622,16 +598,6 @@ object CalorieWidgetRenderer {
   private fun formatTenths(value: Int): String = "${value / 10}.${value % 10}"
 
   private fun formatSteps(value: Int): String = NumberFormat.getIntegerInstance().format(value)
-
-  private fun blendColors(from: Int, to: Int, ratio: Float): Int {
-    val clamped = ratio.coerceIn(0f, 1f)
-    val inverse = 1f - clamped
-    val alpha = (Color.alpha(from) * inverse + Color.alpha(to) * clamped).toInt()
-    val red = (Color.red(from) * inverse + Color.red(to) * clamped).toInt()
-    val green = (Color.green(from) * inverse + Color.green(to) * clamped).toInt()
-    val blue = (Color.blue(from) * inverse + Color.blue(to) * clamped).toInt()
-    return Color.argb(alpha, red, green, blue)
-  }
 
   private fun dpToPx(context: Context, dp: Int): Int =
       (dp * context.resources.displayMetrics.density).toInt()
