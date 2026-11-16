@@ -264,15 +264,34 @@ class WidgetStateRepository(context: Context) {
   }
 
   fun saveAndLogCustomMeal(meal: SavedMeal): Boolean = synchronized(preferences) {
-    val entries = readSavedMealEntries().put(JSONObject()
-        .put("id", meal.id)
-        .put("name", meal.name)
-        .put("calories", meal.calories)
-        .put("proteinGrams", meal.proteinGrams)
-        .put("carbsGrams", meal.carbsGrams)
-        .put("fatGrams", meal.fatGrams))
+    val entries = readSavedMealEntries().put(savedMealEntry(meal))
     logSavedMeals(meal.name, listOf(meal), entries)
   }
+
+  fun updateSavedMeal(meal: SavedMeal): Boolean =
+      changeSavedMeal(meal.id) { entries, index -> entries.put(index, savedMealEntry(meal)) }
+
+  fun deleteSavedMeal(id: String): Boolean =
+      changeSavedMeal(id) { entries, index -> entries.remove(index) }
+
+  private fun changeSavedMeal(id: String, change: (JSONArray, Int) -> Unit): Boolean =
+      synchronized(preferences) {
+        val entries = readSavedMealEntries()
+        val index = (0 until entries.length()).firstOrNull { entries.getJSONObject(it).getString("id") == id }
+            ?: return@synchronized false
+        change(entries, index)
+        preferences.edit().putString(KEY_SAVED_MEALS, entries.toString()).apply()
+        true
+      }
+
+  private fun savedMealEntry(meal: SavedMeal): JSONObject =
+      JSONObject()
+          .put("id", meal.id)
+          .put("name", meal.name)
+          .put("calories", meal.calories)
+          .put("proteinGrams", meal.proteinGrams)
+          .put("carbsGrams", meal.carbsGrams)
+          .put("fatGrams", meal.fatGrams)
 
   fun logSavedSelection(ids: Set<String>, mealName: String): Boolean = synchronized(preferences) {
     val meals = readSavedMeals().filter { it.id in ids }
